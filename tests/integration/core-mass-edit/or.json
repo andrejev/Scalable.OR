@@ -1,0 +1,33 @@
+[
+  {
+    "op": "core/mass-edit",
+    "description": "Mass edit cells in column Column 1",
+    "engineConfig": {
+      "mode": "row-based",
+      "facets": []
+    },
+    "columnName": "Column 1",
+    "expression": "value",
+    "edits": [
+      {
+        "fromBlank": false,
+        "fromError": false,
+        "from": [
+          "Time Fixed Result",
+          "Tiem Fixed Result",
+          "Time-Fixed-Result"
+        ],
+        "to": "Time Fixed Result"
+      },
+      {
+        "fromBlank": false,
+        "fromError": false,
+        "from": [
+          "T-F-R",
+          "TFR"
+        ],
+        "to": "Time Fixed Result"
+      }
+    ]
+  }
+]

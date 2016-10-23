@@ -1,0 +1,18 @@
+[
+  {
+    "op": "core/row-removal",
+    "description": "Remove rows",
+    "engineConfig": {
+      "mode": "row-based",
+      "facets": [
+        {
+          "mode": "text",
+          "caseSensitive": false,
+          "query": "1",
+          "type": "text",
+          "columnName": "Column 4"
+        }
+      ]
+    }
+  }
+]

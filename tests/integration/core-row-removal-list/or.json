@@ -1,0 +1,48 @@
+[
+  {
+    "op": "core/column-addition",
+    "description": "Create column IsEmpty at index 1 based on column Column 1 using expression grel:length(value) == 0",
+    "engineConfig": {
+      "mode": "row-based",
+      "facets": []
+    },
+    "newColumnName": "IsEmpty",
+    "columnInsertIndex": 1,
+    "baseColumnName": "Column 1",
+    "expression": "grel:length(value) == 0",
+    "onError": "set-to-blank"
+  },
+  {
+    "op": "core/row-removal",
+    "description": "Remove rows",
+    "engineConfig": {
+      "mode": "row-based",
+      "facets": [
+        {
+          "omitError": false,
+          "expression": "value",
+          "selectBlank": false,
+          "selection": [
+            {
+              "v": {
+                "v": true,
+                "l": "true"
+              }
+            }
+          ],
+          "selectError": false,
+          "invert": false,
+          "name": "IsEmpty",
+          "omitBlank": false,
+          "type": "list",
+          "columnName": "IsEmpty"
+        }
+      ]
+    }
+  },
+  {
+    "op": "core/column-removal",
+    "description": "Remove column IsEmpty",
+    "columnName": "IsEmpty"
+  }
+]

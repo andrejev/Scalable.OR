@@ -1,0 +1,7 @@
+[
+  {
+    "op": "core/column-removal",
+    "description": "Remove column Column 2",
+    "columnName": "Column 2"
+  }
+]

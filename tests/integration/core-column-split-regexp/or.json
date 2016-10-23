@@ -1,0 +1,17 @@
+[
+  {
+    "op": "core/column-split",
+    "description": "Split column Column 1 by separator",
+    "engineConfig": {
+      "mode": "row-based",
+      "facets": []
+    },
+    "columnName": "Column 3",
+    "guessCellType": true,
+    "removeOriginalColumn": true,
+    "mode": "separator",
+    "separator": "\\d",
+    "regex": true,
+    "maxColumns": 0
+  }
+]

@@ -1,0 +1,15 @@
+[
+  {
+    "op": "core/text-transform",
+    "description": "Text transform on cells in column Column 3 using expression jython:return value.split(\"-\")[1]",
+    "engineConfig": {
+      "mode": "row-based",
+      "facets": []
+    },
+    "columnName": "Column 3",
+    "expression": "jython:return value.split(\"-\")[1]",
+    "onError": "keep-original",
+    "repeat": false,
+    "repeatCount": 10
+  }
+]

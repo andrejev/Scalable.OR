@@ -1,0 +1,281 @@
+[
+  {
+    "op": "core/row-removal",
+    "description": "Remove rows",
+    "engineConfig": {
+      "mode": "row-based",
+      "facets": [
+        {
+          "mode": "text",
+          "caseSensitive": false,
+          "query": "No Award",
+          "name": "Column 1",
+          "type": "text",
+          "columnName": "Column 1"
+        }
+      ]
+    }
+  }, {
+    "op": "core/column-addition",
+    "description": "Create column IsEmpty at index 1 based on column Column 1 using expression grel:length(value) == 0",
+    "engineConfig": {
+      "mode": "row-based",
+      "facets": []
+    },
+    "newColumnName": "IsEmpty",
+    "columnInsertIndex": 1,
+    "baseColumnName": "Column 1",
+    "expression": "grel:length(value) == 0",
+    "onError": "set-to-blank"
+  },
+  {
+    "op": "core/row-removal",
+    "description": "Remove rows",
+    "engineConfig": {
+      "mode": "row-based",
+      "facets": [
+        {
+          "omitError": false,
+          "expression": "value",
+          "selectBlank": false,
+          "selection": [
+            {
+              "v": {
+                "v": true,
+                "l": "true"
+              }
+            }
+          ],
+          "selectError": false,
+          "invert": false,
+          "name": "IsEmpty",
+          "omitBlank": false,
+          "type": "list",
+          "columnName": "IsEmpty"
+        }
+      ]
+    }
+  },
+  {
+    "op": "core/column-removal",
+    "description": "Remove column IsEmpty",
+    "columnName": "IsEmpty"
+  },
+  {
+    "op": "core/row-removal",
+    "description": "Remove rows",
+    "engineConfig": {
+      "mode": "row-based",
+      "facets": [
+        {
+          "mode": "text",
+          "caseSensitive": false,
+          "query": "==",
+          "name": "Column 1",
+          "type": "text",
+          "columnName": "Column 1"
+        }
+      ]
+    }
+  },
+  {
+    "op": "core/text-transform",
+    "description": "Text transform on cells in column Column 1 using expression grel:value.replace(\"'''\", \"\")",
+    "engineConfig": {
+      "mode": "row-based",
+      "facets": []
+    },
+    "columnName": "Column 1",
+    "expression": "grel:value.replace(\"'''\", \"\")",
+    "onError": "keep-original",
+    "repeat": false,
+    "repeatCount": 10
+  },
+  {
+    "op": "core/column-addition",
+    "description": "Create column Is Winner at index 1 based on column Column 1 using expression grel:not(value.startsWith(\"**\"))",
+    "engineConfig": {
+      "mode": "row-based",
+      "facets": []
+    },
+    "newColumnName": "Is Winner",
+    "columnInsertIndex": 1,
+    "baseColumnName": "Column 1",
+    "expression": "grel:not(value.startsWith(\"**\"))",
+    "onError": "set-to-blank"
+  },
+  {
+    "op": "core/column-addition",
+    "description": "Create column Year at index 1 based on column Column 1 using expression grel:value[2,6]",
+    "engineConfig": {
+      "mode": "row-based",
+      "facets": [
+        {
+          "omitError": false,
+          "expression": "value",
+          "selectBlank": false,
+          "selection": [
+            {
+              "v": {
+                "v": true,
+                "l": "true"
+              }
+            }
+          ],
+          "selectError": false,
+          "invert": false,
+          "name": "Is Winner",
+          "omitBlank": false,
+          "type": "list",
+          "columnName": "Is Winner"
+        }
+      ]
+    },
+    "newColumnName": "Year",
+    "columnInsertIndex": 1,
+    "baseColumnName": "Column 1",
+    "expression": "grel:value[2,6]",
+    "onError": "set-to-blank"
+  },
+  {
+    "op": "core/text-transform",
+    "description": "Text transform on cells in column Column 1 using expression grel:value.substring(7)",
+    "engineConfig": {
+      "mode": "row-based",
+      "facets": [
+        {
+          "omitError": false,
+          "expression": "value",
+          "selectBlank": false,
+          "selection": [
+            {
+              "v": {
+                "v": true,
+                "l": "true"
+              }
+            }
+          ],
+          "selectError": false,
+          "invert": false,
+          "name": "Is Winner",
+          "omitBlank": false,
+          "type": "list",
+          "columnName": "Is Winner"
+        }
+      ]
+    },
+    "columnName": "Column 1",
+    "expression": "grel:value.substring(7)",
+    "onError": "keep-original",
+    "repeat": false,
+    "repeatCount": 10
+  },
+  {
+    "op": "core/text-transform",
+    "description": "Text transform on cells in column Column 1 using expression grel:value.substring(3)",
+    "engineConfig": {
+      "mode": "row-based",
+      "facets": [
+        {
+          "omitError": false,
+          "expression": "value",
+          "selectBlank": false,
+          "selection": [
+            {
+              "v": {
+                "v": false,
+                "l": "false"
+              }
+            }
+          ],
+          "selectError": false,
+          "invert": false,
+          "name": "Is Winner",
+          "omitBlank": false,
+          "type": "list",
+          "columnName": "Is Winner"
+        }
+      ]
+    },
+    "columnName": "Column 1",
+    "expression": "grel:value.substring(3)",
+    "onError": "keep-original",
+    "repeat": false,
+    "repeatCount": 10
+  },
+  {
+    "op": "core/fill-down",
+    "description": "Fill down cells in column Year",
+    "engineConfig": {
+      "mode": "row-based",
+      "facets": []
+    },
+    "columnName": "Year"
+  },
+  {
+    "op": "core/column-split",
+    "description": "Split column Column 1 by separator",
+    "engineConfig": {
+      "mode": "row-based",
+      "facets": []
+    },
+    "columnName": "Column 1",
+    "guessCellType": true,
+    "removeOriginalColumn": true,
+    "mode": "separator",
+    "separator": " - ",
+    "regex": false,
+    "maxColumns": 2
+  },
+  {
+    "op": "core/column-split",
+    "description": "Split column Column 1 2 by separator",
+    "engineConfig": {
+      "mode": "row-based",
+      "facets": []
+    },
+    "columnName": "Column 1 2",
+    "guessCellType": true,
+    "removeOriginalColumn": true,
+    "mode": "separator",
+    "separator": " as ",
+    "regex": false,
+    "maxColumns": 2
+  },
+  {
+    "op": "core/column-rename",
+    "description": "Rename column Column 1 1 to actor",
+    "oldColumnName": "Column 1 1",
+    "newColumnName": "actor"
+  },
+  {
+    "op": "core/column-rename",
+    "description": "Rename column Column 1 2 1 to film",
+    "oldColumnName": "Column 1 2 1",
+    "newColumnName": "film"
+  },
+  {
+    "op": "core/column-rename",
+    "description": "Rename column Column 1 2 2 to character",
+    "oldColumnName": "Column 1 2 2",
+    "newColumnName": "character"
+  },
+  {
+    "op": "core/text-transform",
+    "description": "Text transform on cells in column actor using expression grel:if(cells[\"Is Winner\"].value, value + \" (winner)\", value)",
+    "engineConfig": {
+      "mode": "row-based",
+      "facets": []
+    },
+    "columnName": "actor",
+    "expression": "grel:if(cells[\"Is Winner\"].value, value + \" (winner)\", value)",
+    "onError": "keep-original",
+    "repeat": false,
+    "repeatCount": 10
+  },
+  {
+    "op": "core/column-removal",
+    "description": "Remove column Year",
+    "columnName": "Year"
+  }
+]
