@@ -20,6 +20,7 @@ Optional parameters:
 -l, --in-proc       - use in-proc spark instance                (default: False)
 -v, --verbose       - increase output verbosity                 (default: False)
 --spark-home        - set path to spark                         (default: /usr/local/spark)
+--csv-sep           - set CSV separator (delimiter)             (default: ',')
 ```
 
 ### How to start from command line

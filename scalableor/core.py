@@ -101,11 +101,11 @@ class ScalableOR(object):
 
         # import file
         if args.add_import_command:
-            or_program.insert(0, {"op": "scalableor/import", "separator": ",", "path": i_path})
+            or_program.insert(0, {"op": "scalableor/import", "separator": args.csv_sep, "path": i_path})
 
         # export file
         if args.add_export_command:
-            or_program.append({"op": "scalableor/export", "separator": ",", "path": o_path})
+            or_program.append({"op": "scalableor/export", "separator": args.csv_sep, "path": o_path})
 
         # verify or-program
         if self.verify(or_program) is False:
@@ -178,6 +178,9 @@ class ScalableOR(object):
         parser.add_argument("--include-python-libraries", type=str, default=None,
                             help="include python libraries to Spark Context "
                                  "(comma separated list; supported .py,.zip,.egg)", )
+
+        parser.add_argument("--csv-sep", default=",", help="the separator/delimiter for csv import and export",
+                            type=str)
 
         args = parser.parse_args(args=argv)
 

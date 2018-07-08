@@ -43,7 +43,7 @@ def sc_or_export(cmd, df=None, **kwargs):
     :param df:          spark data frame
     """
     tmp = tempfile.mkdtemp() + ".scalable.or"
-    df.write.format("com.databricks.spark.csv").save(tmp)
+    df.write.format("com.databricks.spark.csv").option("delimiter", cmd["separator"]).save(tmp)
 
     with open(cmd["path"], "w") as output:
         for fpath in sorted(os.listdir(tmp)):
