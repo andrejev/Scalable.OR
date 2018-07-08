@@ -101,11 +101,13 @@ class ScalableOR(object):
 
         # import file
         if args.add_import_command:
-            or_program.insert(0, {"op": "scalableor/import", "separator": args.csv_sep, "path": i_path})
+            or_program.insert(0, {"op": "scalableor/import", "separator": args.csv_sep, "path": i_path,
+                                  "col_names_first_row": args.col_names_first_row})
 
         # export file
         if args.add_export_command:
-            or_program.append({"op": "scalableor/export", "separator": args.csv_sep, "path": o_path})
+            or_program.append({"op": "scalableor/export", "separator": args.csv_sep, "path": o_path,
+                               "col_names_first_row": args.col_names_first_row})
 
         # verify or-program
         if self.verify(or_program) is False:
@@ -181,6 +183,9 @@ class ScalableOR(object):
 
         parser.add_argument("--csv-sep", default=",", help="the separator/delimiter for csv import and export",
                             type=str)
+
+        parser.add_argument("--col-names-first-row", default=False, action="store_true", help="make Scalable.OR use the"
+                            " first row as column names when importing CSV files (default: %(default)s)")
 
         args = parser.parse_args(args=argv)
 

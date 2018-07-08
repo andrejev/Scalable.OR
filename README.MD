@@ -16,11 +16,12 @@ Required parameters:
 -o, --output        - set path to output file
 
 Optional parameters:
--m, --master        - set spark master                          (default: spark://locahost:7077)
--l, --in-proc       - use in-proc spark instance                (default: False)
--v, --verbose       - increase output verbosity                 (default: False)
---spark-home        - set path to spark                         (default: /usr/local/spark)
---csv-sep           - set CSV separator (delimiter)             (default: ',')
+-m, --master           - set spark master                         (default: spark://localhost:7077)
+-l, --in-proc          - use in-proc spark instance               (default: False)
+-v, --verbose          - increase output verbosity                (default: False)
+--spark-home           - set path to spark                        (default: /usr/local/spark)
+--csv-sep              - set CSV separator (delimiter)            (default: ',')
+--col-names-first-row  - columns are named after first row (CSV)  (default: False)
 ```
 
 ### How to start from command line

@@ -24,13 +24,18 @@ def sc_or_import(cmd, sc=None, **kwargs):
     :param cmd:         import parameters
     :param sc:          spark context object
     """
-    rdd = sc.textFile(cmd["path"])
-    rdd_splitted = rdd.map(lambda el: el.split(cmd["separator"]))
-    sql_context = SQLContext(sc)
-    df = sql_context.createDataFrame(rdd_splitted)
 
-    for i in range(len(df.columns)):
-        df = df.withColumnRenamed(df.columns[i], COLUMN_NAME % (i + 1))
+    # The head should only be set when the user specified it
+    header = True if cmd["col_names_first_row"] else None
+
+    sql_context = SQLContext(sc)
+    df = sql_context.read.csv(cmd["path"], sep=cmd["separator"], header=header)
+
+    # If header from CSV file was not used, name the columns 'Column 1', 'Column 2' etc.
+    if not header:
+        for i in range(len(df.columns)):
+            df = df.withColumnRenamed(df.columns[i], COLUMN_NAME % (i + 1))
+
     return df
 
 
@@ -49,6 +54,11 @@ def sc_or_export(cmd, df=None, **kwargs):
         for fpath in sorted(os.listdir(tmp)):
             if fpath.startswith("part-"):
                 with open(os.path.join(tmp, fpath), "r") as result:
+
+                    # Write header if specified
+                    if cmd["col_names_first_row"]:
+                        output.write(cmd["separator"].join(df.columns) + "\n")
+
                     for line in result.readlines():
                         output.write(line)
 
