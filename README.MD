@@ -15,7 +15,7 @@ Required parameters:
 -p, --or-program    - set path to json file with OR program
 -o, --output        - set path to output file
 
-Optional parameters:
+Optional parameters (defaults can be changed in config.ini):
 -m, --master           - set spark master                         (default: spark://localhost:7077)
 -l, --in-proc          - use in-proc spark instance               (default: False)
 -v, --verbose          - increase output verbosity                (default: False)
@@ -44,6 +44,9 @@ Example: run unittest
 #!bash
 python -m unittest discover -s scalable.or/tests/
 ```
+
+### Configuring Scalable.OR
+Scalable.OR requires a config.ini. Just rename config.default.ini to config.ini (or copy in order to keep the original file) and adjust the parameters.
 
 ## How to extend Scalable.OR
 

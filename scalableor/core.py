@@ -7,6 +7,7 @@ import json
 import sys
 import os
 import zipfile
+import ConfigParser
 
 # external libs
 from pyspark import SparkContext, SparkConf
@@ -21,6 +22,10 @@ from manager import VerifiersManager, MethodsManager
 
 CURRENT_DIR = os.path.abspath(os.path.dirname(__file__))
 PROJECT_DIR = os.path.abspath(os.path.join(CURRENT_DIR, ".."))
+
+# Parse config file
+cfg = ConfigParser.RawConfigParser()
+cfg.read("config.ini")
 
 
 class ScalableOR(object):
@@ -150,7 +155,7 @@ class ScalableOR(object):
         """
         parser = argparse.ArgumentParser(description="Start %s " % NAME)
 
-        parser.add_argument("-m", "--master", default="spark://localhost:7077",
+        parser.add_argument("-m", "--master", default=cfg.get("cmd", "master"),
                             help="set spark master (default: %(default)s)", type=str)
 
         parser.add_argument("-i", "--input", default=None,
@@ -162,13 +167,13 @@ class ScalableOR(object):
         parser.add_argument("-o", "--output", default=None,
                             help="set path to output file (default: %(default)s)", type=str)
 
-        parser.add_argument("-l", "--in-proc", dest="in_proc", default=False, action="store_true",
-                            help="use in-proc spark instance (default: %(default)s)")
+        parser.add_argument("-l", "--in-proc", dest="in_proc", default=cfg.getboolean("cmd", "in-proc"),
+                            action="store_true", help="use in-proc spark instance (default: %(default)s)")
 
-        parser.add_argument("--spark-home", default="/usr/local/spark", type=str,
+        parser.add_argument("--spark-home", default=cfg.get("cmd", "spark-home"), type=str,
                             help="set path to spark (default: %(default)s)")
 
-        parser.add_argument("-v", "--verbose", action="store_true", default=False,
+        parser.add_argument("-v", "--verbose", action="store_true", default=cfg.getboolean("cmd", "verbose"),
                             help="increase output verbosity (default: %(default)s)", )
 
         parser.add_argument("--add-import-command", action="store_true", default=True,
@@ -181,11 +186,12 @@ class ScalableOR(object):
                             help="include python libraries to Spark Context "
                                  "(comma separated list; supported .py,.zip,.egg)", )
 
-        parser.add_argument("--csv-sep", default=",", help="the separator/delimiter for csv import and export",
-                            type=str)
+        parser.add_argument("--csv-sep", default=cfg.get("cmd", "csv-sep"),
+                            help="the separator/delimiter for csv import and export (default: %(default)s)", type=str)
 
-        parser.add_argument("--col-names-first-row", default=False, action="store_true", help="make Scalable.OR use the"
-                            " first row as column names when importing CSV files (default: %(default)s)")
+        parser.add_argument("--col-names-first-row", default=cfg.getboolean("cmd", "col-names-first-row"),
+                            action="store_true", help="make Scalable.OR use the first row as column names when"
+                                                      "importing CSV files (default: %(default)s)")
 
         args = parser.parse_args(args=argv)
 
