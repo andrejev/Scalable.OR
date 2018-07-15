@@ -23,7 +23,8 @@ from manager import VerifiersManager, MethodsManager
 CURRENT_DIR = os.path.abspath(os.path.dirname(__file__))
 PROJECT_DIR = os.path.abspath(os.path.join(CURRENT_DIR, ".."))
 
-# Parse config file
+# Parse config file. Please note that the config file that is in the current directory is used, so the tests in /tests
+# (deliberately) use a different config file!
 cfg = ConfigParser.RawConfigParser()
 cfg.read("config.ini")
 
