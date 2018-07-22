@@ -7,9 +7,9 @@ import os
 import re
 import tempfile
 
-from pyspark.sql import SQLContext, utils
+from pyspark.sql import SQLContext, utils, functions
 
-from scalableor.constant import COLUMN_NAME
+from scalableor.constant import COLUMN_NAME, LOG_COLUMN
 from scalableor.context import eval_expression, to_grel_object
 from scalableor.manager import MethodsManager
 
@@ -41,6 +41,9 @@ def sc_or_import(cmd, sc=None, **kwargs):
         if not header:
             for i in range(len(df.columns)):
                 df = df.withColumnRenamed(df.columns[i], COLUMN_NAME % (i + 1))
+
+        # Add column to store log entries
+        df = df.withColumn(LOG_COLUMN, functions.lit(""))
 
         return df
 
@@ -121,6 +124,7 @@ def core_column_split(cmd, df=None, **kwargs):
     """
     column_names = df.columns[:]
     pos = column_names.index(cmd["columnName"])
+    pos_log = column_names.index(LOG_COLUMN)
 
     before_columns = column_names[:pos]
     after_columns = column_names[pos + 1:]
@@ -157,18 +161,21 @@ def core_column_split(cmd, df=None, **kwargs):
                         max_column = max(len(row[pos].split(cmd["separator"])), max_column)
             max_column -= 1
 
-        # generate split callback
+        # Generate split callback. The lambda functions leave all columns before and after the specified column as they
+        # are, split the specified column and, if necessary, write into the log column.
         add_to = ["" for _ in range(max_column + 1)]
         if cmd.get("regex") is True:
             func = lambda e: \
                 e[:pos + 1] + \
                 tuple((re.split(cmd["separator"], e[pos], max_column) + add_to)[:max_column + 1]) + \
-                e[pos + 1:]
+                e[pos + 1:-1] + ("{}\nWarning: Cell does not contain delimiter '{}'!".format(e[pos], cmd["separator"])
+                                 if cmd["separator"] not in e[pos] else "",)
         else:
             func = lambda e: \
                 e[:pos + 1] + \
                 tuple((e[pos].split(cmd["separator"], max_column) + add_to)[:max_column + 1]) + \
-                e[pos + 1:]
+                e[pos + 1:-1] + ("{}\nWarning: Cell does not contain delimiter '{}'!".format(e[pos], cmd["separator"])
+                                 if cmd["separator"] not in e[pos] else "",)
 
     result = df.sql_ctx.createDataFrame(df.rdd.map(func))
 
