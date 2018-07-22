@@ -83,6 +83,9 @@ class TestORColumnRename(unittest.TestCase):
     def test_base(self):
         return do_test_expected(self, "core-column-rename")
 
+    def test_with_error(self):
+        return do_test_expected(self, "core-column-rename-error")
+
 
 class TestORColumnRemoval(unittest.TestCase):
     def test_base(self):
@@ -90,6 +93,9 @@ class TestORColumnRemoval(unittest.TestCase):
 
     def test_named_removal(self):
         return do_test_expected(self, "core-column-removal-named", argv_append=["--col-names-first-row"])
+
+    def test_with_error(self):
+        return do_test_expected(self, "core-column-removal-error")
 
 
 class TestORColumnAddition(unittest.TestCase):

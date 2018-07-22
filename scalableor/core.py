@@ -248,8 +248,14 @@ class ScalableOR(object):
             for cmd in or_program:
                 name = cmd["op"]
                 log.logger.info("Call '%s': cmd='%s'" % (name, cmd))
-                df = MethodsManager.call(cmd, df=df, sc=ScalableOR.sc)
-                df and samples.append(df.head(10))
+
+                try:
+                    df = MethodsManager.call(cmd, df=df, sc=ScalableOR.sc)
+                    df and samples.append(df.head(10))
+                except SOROperationException as e:
+                    print("Error while performing operation '{}': {}.".format(e.cmd, e.message))
+                    continue
+                    
         except SORGlobalException as e:
             print("Scalable.OR stopped working due to an error in {}: {}.".format(e.cmd, e.message))
 

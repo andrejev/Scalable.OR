@@ -86,6 +86,11 @@ def core_column_rename(cmd, df, **kwargs):
     """
     rename column
     """
+
+    # Check if the column exists
+    if cmd["oldColumnName"] not in df.columns[:]:
+        raise SOROperationException("Column '{}' not found".format(cmd["oldColumnName"]), "core/column-rename")
+
     return df.withColumnRenamed(cmd["oldColumnName"], cmd["newColumnName"])
 
 
@@ -94,6 +99,11 @@ def core_column_removal(cmd, df, **kwargs):
     """
     remove column by name
     """
+
+    # Check if the column exists
+    if cmd["columnName"] not in df.columns[:]:
+        raise SOROperationException("Column '{}' not found".format(cmd["columnName"]), "core/column-removal")
+
     return df.drop(cmd["columnName"])
 
 
