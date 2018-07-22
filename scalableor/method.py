@@ -7,13 +7,14 @@ import os
 import re
 import tempfile
 
-from pyspark.sql import SQLContext
+from pyspark.sql import SQLContext, utils
 
 from scalableor.constant import COLUMN_NAME
 from scalableor.context import eval_expression, to_grel_object
 from scalableor.manager import MethodsManager
 
 from scalableor.facet import get_facet_filter
+from scalableor.exception import SORGlobalException, SORLocalException, SOROperationException
 
 
 @MethodsManager.register("scalableor/import")
@@ -25,18 +26,26 @@ def sc_or_import(cmd, sc=None, **kwargs):
     :param sc:          spark context object
     """
 
+    # Check separator
+    if len(cmd["separator"]) == 0:
+        raise SORGlobalException("No CSV separator specified", "scalableor/import")
+
     # The head should only be set when the user specified it
     header = True if cmd["col_names_first_row"] else None
 
-    sql_context = SQLContext(sc)
-    df = sql_context.read.csv(cmd["path"], sep=cmd["separator"], header=header)
+    try:
+        sql_context = SQLContext(sc)
+        df = sql_context.read.csv(cmd["path"], sep=cmd["separator"], header=header)
 
-    # If header from CSV file was not used, name the columns 'Column 1', 'Column 2' etc.
-    if not header:
-        for i in range(len(df.columns)):
-            df = df.withColumnRenamed(df.columns[i], COLUMN_NAME % (i + 1))
+        # If header from CSV file was not used, name the columns 'Column 1', 'Column 2' etc.
+        if not header:
+            for i in range(len(df.columns)):
+                df = df.withColumnRenamed(df.columns[i], COLUMN_NAME % (i + 1))
 
-    return df
+        return df
+
+    except utils.IllegalArgumentException as e:
+        raise SORGlobalException(e.desc, "scalableor/import")
 
 
 @MethodsManager.register("scalableor/export")

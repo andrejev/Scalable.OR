@@ -13,20 +13,24 @@ import ConfigParser
 from pyspark import SparkContext, SparkConf
 
 # local imports
-import log
-import method
-import verify
+import scalableor.log as log
+import scalableor.method as method
+import scalableor.verify as verify
 
-from constant import NAME
-from manager import VerifiersManager, MethodsManager
+from scalableor.constant import NAME
+from scalableor.manager import VerifiersManager, MethodsManager
+from scalableor.exception import *
 
 CURRENT_DIR = os.path.abspath(os.path.dirname(__file__))
 PROJECT_DIR = os.path.abspath(os.path.join(CURRENT_DIR, ".."))
 
 # Parse config file. Please note that the config file that is in the current directory is used, so the tests in /tests
 # (deliberately) use a different config file!
-cfg = ConfigParser.RawConfigParser()
+cfg = ConfigParser.ConfigParser()
 cfg.read("config.ini")
+
+# Hotfix: de-escape semicolon
+cfg.set("cmd", "csv-sep", cfg.get("cmd", "csv-sep").replace("\\;", ";"))
 
 
 class ScalableOR(object):
@@ -238,13 +242,16 @@ class ScalableOR(object):
 
         :param or_program:      sequence of OpenRefine commands
         """
-        df = None
-        samples = []
-        for cmd in or_program:
-            name = cmd["op"]
-            log.logger.info("Call '%s': cmd='%s'" % (name, cmd))
-            df = MethodsManager.call(cmd, df=df, sc=ScalableOR.sc)
-            df and samples.append(df.head(10))
+        try:
+            df = None
+            samples = []
+            for cmd in or_program:
+                name = cmd["op"]
+                log.logger.info("Call '%s': cmd='%s'" % (name, cmd))
+                df = MethodsManager.call(cmd, df=df, sc=ScalableOR.sc)
+                df and samples.append(df.head(10))
+        except SORGlobalException as e:
+            print("Scalable.OR stopped working due to an error in {}: {}.".format(e.cmd, e.message))
 
 
 main = run = ScalableOR
