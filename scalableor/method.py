@@ -9,7 +9,7 @@ import tempfile
 
 from pyspark.sql import SQLContext, utils, functions
 
-from scalableor.constant import COLUMN_NAME, LOG_COLUMN
+from scalableor.constant import COLUMN_NAME, REPORT_COLUMN
 from scalableor.context import eval_expression, to_grel_object
 from scalableor.manager import MethodsManager
 
@@ -42,8 +42,8 @@ def sc_or_import(cmd, sc=None, **kwargs):
             for i in range(len(df.columns)):
                 df = df.withColumnRenamed(df.columns[i], COLUMN_NAME % (i + 1))
 
-        # Add column to store log entries
-        df = df.withColumn(LOG_COLUMN, functions.lit(""))
+        # Add column to store report entries
+        df = df.withColumn(REPORT_COLUMN, functions.lit(""))
 
         return df
 
@@ -60,10 +60,10 @@ def sc_or_export(cmd, df=None, **kwargs):
     :param df:          spark data frame
     """
 
-    # TODO Extract log!
+    # TODO Extract row-specific report!
 
-    # Remove log column
-    df = df.drop(LOG_COLUMN)
+    # Remove report column
+    df = df.drop(REPORT_COLUMN)
 
     tmp = tempfile.mkdtemp() + ".scalable.or"
     df.write.format("com.databricks.spark.csv").option("delimiter", cmd["separator"]).save(tmp)
@@ -112,6 +112,11 @@ def core_column_move(cmd, df, **kwargs):
     """
     move column to index by name
     """
+
+    # Check if the column exists
+    if cmd["columnName"] not in df.columns[:]:
+        raise SOROperationException("Column '{}' not found".format(cmd["columnName"]), "core/column-move")
+
     columns = df.columns[:]
     current_index = columns.index(cmd["columnName"])
     columns.insert(cmd["index"], columns.pop(current_index))
@@ -138,11 +143,16 @@ def core_column_split(cmd, df=None, **kwargs):
     """
     split column by separator or field length
     """
+
+    # Check if the column exists
+    if cmd["columnName"] not in df.columns[:]:
+        raise SOROperationException("Column '{}' not found".format(cmd["columnName"]), "core/column-split")
+
     column_names = df.columns[:]
     pos = column_names.index(cmd["columnName"])
 
-    # Make sure the LOG_COLUMN is the last column. Otherwise, writing into it will not work
-    assert column_names.index(LOG_COLUMN) == len(column_names)-1
+    # Make sure the REPORT_COLUMN is the last column. Otherwise, writing into it will not work
+    assert column_names.index(REPORT_COLUMN) == len(column_names) - 1
 
     before_columns = column_names[:pos]
     after_columns = column_names[pos + 1:]
@@ -218,6 +228,11 @@ def core_column_addition(cmd, df, **kwargs):
     """
     create new column based on existing one
     """
+
+    # Check if the column exists
+    if cmd["baseColumnName"] not in df.columns[:]:
+        raise SOROperationException("Column '{}' not found".format(cmd["baseColumnName"]), "core/column-addition")
+
     names = df.columns[:]
     position_of_column = df.columns.index(cmd["baseColumnName"])
 

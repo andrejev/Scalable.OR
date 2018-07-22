@@ -1,0 +1,19 @@
+[
+  {
+    "op": "core/column-move",
+    "description": "Move column Column 4 to position 0",
+    "columnName": "Column 4",
+    "index": 0
+  },{
+    "op": "core/column-move",
+    "description": "Move column Column 3 to position 0",
+    "columnName": "Column 3",
+    "index": 0
+  },
+  {
+    "op": "core/column-move",
+    "description": "Move column Column 3 to position 1",
+    "columnName": "Column 3",
+    "index": 1
+  }
+]

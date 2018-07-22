@@ -1,0 +1,27 @@
+[
+  {
+    "op": "core/column-addition",
+    "description": "Create column AddColumn at index 3 based on column Column 3 using expression jython:return value.split(\"-\")[0].replace(\"t\", \"T\", 1)",
+    "engineConfig": {
+      "mode": "row-based",
+      "facets": []
+    },
+    "newColumnName": "AddColumn",
+    "columnInsertIndex": 3,
+    "baseColumnName": "Column 4",
+    "expression": "jython:return value.split(\"-\")[0].replace(\"t\", \"T\", 1)",
+    "onError": "set-to-blank"
+  },{
+    "op": "core/column-addition",
+    "description": "Create column AddColumn at index 3 based on column Column 3 using expression jython:return value.split(\"-\")[0].replace(\"t\", \"T\", 1)",
+    "engineConfig": {
+      "mode": "row-based",
+      "facets": []
+    },
+    "newColumnName": "AddColumn",
+    "columnInsertIndex": 3,
+    "baseColumnName": "Column 3",
+    "expression": "jython:return value.split(\"-\")[0].replace(\"t\", \"T\", 1)",
+    "onError": "set-to-blank"
+  }
+]

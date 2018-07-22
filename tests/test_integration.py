@@ -64,6 +64,9 @@ class TestORColumnSplit(unittest.TestCase):
     def test_base(self):
         return do_test_expected(self, "core-column-split")
 
+    def test_error(self):
+        return do_test_expected(self, "core-column-split-error")
+
     def test_remove_original_false(self):
         return do_test_expected(self, "core-column-split-remove-original-false")
 
@@ -77,6 +80,9 @@ class TestORColumnSplit(unittest.TestCase):
 class TestORColumnMove(unittest.TestCase):
     def test_base(self):
         return do_test_expected(self, "core-column-move")
+
+    def test_error(self):
+        return do_test_expected(self, "core-column-move-error")
 
 
 class TestORColumnRename(unittest.TestCase):
@@ -101,6 +107,9 @@ class TestORColumnRemoval(unittest.TestCase):
 class TestORColumnAddition(unittest.TestCase):
     def test_python(self):
         return do_test_expected(self, "core-column-addition-jython")
+
+    def test_with_error(self):
+        return do_test_expected(self, "core-column-addition-error")
 
 
 class TestORTextTransform(unittest.TestCase):
