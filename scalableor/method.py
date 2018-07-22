@@ -196,13 +196,13 @@ def core_column_split(cmd, df=None, **kwargs):
             func = lambda e: \
                 e[:pos + 1] + \
                 tuple((re.split(cmd["separator"], e[pos], max_column) + add_to)[:max_column + 1]) + \
-                e[pos + 1:-1] + ("{}\nWarning: Cell does not contain delimiter '{}'!".format(e[pos], cmd["separator"])
+                e[pos + 1:-1] + ("{}\nNotification: Cell does not contain delimiter '{}'!".format(e[pos], cmd["separator"])
                                  if cmd["separator"] not in e[pos] else "",)
         else:
             func = lambda e: \
                 e[:pos + 1] + \
                 tuple((e[pos].split(cmd["separator"], max_column) + add_to)[:max_column + 1]) + \
-                e[pos + 1:-1] + ("{}\nWarning: Cell does not contain delimiter '{}'!".format(e[pos], cmd["separator"])
+                e[pos + 1:-1] + ("{}\nNotification: Cell does not contain delimiter '{}'!".format(e[pos], cmd["separator"])
                                  if cmd["separator"] not in e[pos] else "",)
 
     result = df.sql_ctx.createDataFrame(df.rdd.map(func))

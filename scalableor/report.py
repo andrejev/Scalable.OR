@@ -13,6 +13,10 @@ class Report:
 
     def row_error(self, operation, error, row):
         self.op_errors.append((operation, error, row))
+        print("Added {}, {}, {} to row_error list.".format(operation, error, ";".join(row)))
+
+        # Deliberately return an empty list to make it usable in lambda functions
+        return []
 
     def __del__(self):
 
