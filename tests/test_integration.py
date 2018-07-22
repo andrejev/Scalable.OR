@@ -118,6 +118,8 @@ class TestORRowRemoval(unittest.TestCase):
         return do_test_expected(self, "core-row-removal-list")
 
 
+"""
 class TestORBigTest(unittest.TestCase):
     def test_base(self):
         return do_test_expected(self, "or-demo-wiki")
+"""
