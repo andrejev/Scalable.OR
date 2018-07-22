@@ -59,6 +59,12 @@ def sc_or_export(cmd, df=None, **kwargs):
     :param cmd:         export parameters
     :param df:          spark data frame
     """
+
+    # TODO Extract log!
+
+    # Remove log column
+    df = df.drop(LOG_COLUMN)
+
     tmp = tempfile.mkdtemp() + ".scalable.or"
     df.write.format("com.databricks.spark.csv").option("delimiter", cmd["separator"]).save(tmp)
 
@@ -124,7 +130,9 @@ def core_column_split(cmd, df=None, **kwargs):
     """
     column_names = df.columns[:]
     pos = column_names.index(cmd["columnName"])
-    pos_log = column_names.index(LOG_COLUMN)
+
+    # Make sure the LOG_COLUMN is the last column. Otherwise, writing into it will not work
+    assert column_names.index(LOG_COLUMN) == len(column_names)-1
 
     before_columns = column_names[:pos]
     after_columns = column_names[pos + 1:]
