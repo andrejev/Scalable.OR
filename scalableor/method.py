@@ -125,13 +125,18 @@ def core_column_split(cmd, df=None, **kwargs):
     before_columns = column_names[:pos]
     after_columns = column_names[pos + 1:]
 
+    # A column can either be split by length, i.e. after a specified amount of characters, or by a specified delimiter.
     if "fieldLengths" in cmd:
+
+        # Row-wise splitting by length
         func = lambda e: \
             e[:pos + 1] + \
             tuple(to_grel_object(e[pos]).splitByLengths(*cmd["fieldLengths"])) + \
             e[pos + 1:]
     else:
-        # max column logic
+        # In this block, the column is split by a specified separator (cmd["separator"])
+
+        # The user can define the maximum amount of columns that should be created while splitting
         if "maxColumns" in cmd:
             max_column = cmd["maxColumns"]
             if max_column == 1:
