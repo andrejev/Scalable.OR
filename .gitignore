@@ -1,2 +1,9 @@
 *.pyc
 .idea/
+input/*
+program/*
+report.md
+sandbox.py
+config.ini
+out/*
+/report.txt

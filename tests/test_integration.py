@@ -21,7 +21,11 @@ def do_test_expected(self, case, order_is_relevant=True, argv_append=None, csv_s
     file_or = os.path.join(CASES_DIR, case, "or.json")
     file_result = os.path.join(CASES_DIR, case, "output.csv")
 
+    # The report file is only checked if an oracle ("report.txt") exists!
+    file_oracle_report = os.path.join(CASES_DIR, case, "report.txt")
+
     file_out = NamedTemporaryFile()
+    file_report = NamedTemporaryFile()
 
     # These are the default arguments that cannot be changed by any test
     argv = [
@@ -29,6 +33,7 @@ def do_test_expected(self, case, order_is_relevant=True, argv_append=None, csv_s
         "-p", file_or,
         "-o", file_out.name + ".csv",
         "-l",
+        "-r", file_report.name + ".txt"
     ]
 
     # If parameter argv_append is set, arguments can be appended
@@ -49,7 +54,19 @@ def do_test_expected(self, case, order_is_relevant=True, argv_append=None, csv_s
     for index, exp_line in enumerate(expected_lines):
         self.assertEqual(exp_line, actual_lines[index])
 
+    # Check report (only if an oracle is provided, see above)
+    if os.path.isfile(file_oracle_report):
+        with open(file_report.name + ".txt", "r") as result_report:
+            actual_lines = [x for x in result_report.readlines()]
+
+        with open(file_oracle_report) as oracle_report:
+            expected_lines = [x for x in oracle_report.readlines()]
+
+        for i, expected_line in enumerate(expected_lines):
+            self.assertEqual(expected_line, actual_lines[i])
+            
     file_out.close()
+    file_report.close()
 
 
 class TestScOR(unittest.TestCase):
@@ -63,6 +80,9 @@ class TestScOR(unittest.TestCase):
 class TestORColumnSplit(unittest.TestCase):
     def test_base(self):
         return do_test_expected(self, "core-column-split")
+
+    def test_error(self):
+        return do_test_expected(self, "core-column-split-error")
 
     def test_remove_original_false(self):
         return do_test_expected(self, "core-column-split-remove-original-false")
@@ -78,10 +98,16 @@ class TestORColumnMove(unittest.TestCase):
     def test_base(self):
         return do_test_expected(self, "core-column-move")
 
+    def test_error(self):
+        return do_test_expected(self, "core-column-move-error")
+
 
 class TestORColumnRename(unittest.TestCase):
     def test_base(self):
         return do_test_expected(self, "core-column-rename")
+
+    def test_with_error(self):
+        return do_test_expected(self, "core-column-rename-error")
 
 
 class TestORColumnRemoval(unittest.TestCase):
@@ -91,10 +117,16 @@ class TestORColumnRemoval(unittest.TestCase):
     def test_named_removal(self):
         return do_test_expected(self, "core-column-removal-named", argv_append=["--col-names-first-row"])
 
+    def test_with_error(self):
+        return do_test_expected(self, "core-column-removal-error")
+
 
 class TestORColumnAddition(unittest.TestCase):
     def test_python(self):
         return do_test_expected(self, "core-column-addition-jython")
+
+    def test_with_error(self):
+        return do_test_expected(self, "core-column-addition-error")
 
 
 class TestORTextTransform(unittest.TestCase):
@@ -118,6 +150,8 @@ class TestORRowRemoval(unittest.TestCase):
         return do_test_expected(self, "core-row-removal-list")
 
 
+"""
 class TestORBigTest(unittest.TestCase):
     def test_base(self):
         return do_test_expected(self, "or-demo-wiki")
+"""

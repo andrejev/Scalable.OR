@@ -13,24 +13,31 @@ import ConfigParser
 from pyspark import SparkContext, SparkConf
 
 # local imports
-import log
-import method
-import verify
+import scalableor.log as log
+import scalableor.method as method
+import scalableor.verify as verify
 
-from constant import NAME
-from manager import VerifiersManager, MethodsManager
+from scalableor.constant import NAME
+from scalableor.manager import VerifiersManager, MethodsManager
+from scalableor.exception import *
+from scalableor.report import Report
 
 CURRENT_DIR = os.path.abspath(os.path.dirname(__file__))
 PROJECT_DIR = os.path.abspath(os.path.join(CURRENT_DIR, ".."))
 
-# Parse config file
-cfg = ConfigParser.RawConfigParser()
+# Parse config file. Please note that the config file that is in the current directory is used, so the tests in /tests
+# (deliberately) use a different config file!
+cfg = ConfigParser.ConfigParser()
 cfg.read("config.ini")
+
+# Hotfix: de-escape semicolon
+cfg.set("cmd", "csv-sep", cfg.get("cmd", "csv-sep").replace("\\;", ";"))
 
 
 class ScalableOR(object):
     sc = None
     zippath = os.path.abspath(os.path.join(CURRENT_DIR, "../scalable.zip"))
+    report = None
 
     def get_jars(self, from_path="vendor/jar"):
         """
@@ -87,6 +94,7 @@ class ScalableOR(object):
         i_path = os.path.abspath(args.input)
         o_path = os.path.abspath(args.output)
         op_path = os.path.abspath(args.or_program)
+        r_path = os.path.abspath(args.report)
 
         for p in [i_path, op_path, os.path.dirname(o_path)]:
             if not os.path.exists(p):
@@ -100,6 +108,8 @@ class ScalableOR(object):
         log.logger.info("input path: %s" % i_path)
         log.logger.info("output path: %s" % o_path)
         log.logger.info("or-program path: %s" % op_path)
+
+        self.report = Report(r_path)
 
         # read or-program
         or_program = json.load(open(op_path, "r"))
@@ -176,6 +186,9 @@ class ScalableOR(object):
         parser.add_argument("-v", "--verbose", action="store_true", default=cfg.getboolean("cmd", "verbose"),
                             help="increase output verbosity (default: %(default)s)", )
 
+        parser.add_argument("-r", "--report", default=cfg.get("cmd", "report"),
+                            help="file to store the report in (default: %(default)s)", )
+
         parser.add_argument("--add-import-command", action="store_true", default=True,
                             help="add command to import input as CSV file (default: %(default)s) ", )
 
@@ -230,20 +243,29 @@ class ScalableOR(object):
 
         return True
 
-    @staticmethod
-    def refine(or_program):
+    def refine(self, or_program):
         """
         execute OpenRefine program
 
         :param or_program:      sequence of OpenRefine commands
         """
-        df = None
-        samples = []
-        for cmd in or_program:
-            name = cmd["op"]
-            log.logger.info("Call '%s': cmd='%s'" % (name, cmd))
-            df = MethodsManager.call(cmd, df=df, sc=ScalableOR.sc)
-            df and samples.append(df.head(10))
+        try:
+            df = None
+            samples = []
+            for cmd in or_program:
+                name = cmd["op"]
+                log.logger.info("Call '%s': cmd='%s'" % (name, cmd))
+
+                try:
+                    df = MethodsManager.call(cmd, df=df, sc=ScalableOR.sc, report=self.report)
+                    df and samples.append(df.head(10))
+                except SOROperationException as e:
+                    print("Error while performing operation '{}': {}.".format(e.cmd, e.message))
+                    self.report.op_error(e.cmd, e.message)
+                    continue
+                    
+        except SORGlobalException as e:
+            print("Scalable.OR stopped working due to an error in {}: {}.".format(e.cmd, e.message))
 
 
 main = run = ScalableOR
