@@ -25,10 +25,10 @@ class MethodsManager(object):
         return name in MethodsManager.fn
 
     @staticmethod
-    def call(cmd, df=None, rdd=None, sc=None):
+    def call(cmd, df=None, rdd=None, sc=None, report=None):
         name = cmd["op"]
         if MethodsManager.has(name):
-            return MethodsManager.get(name)(cmd, df=df, rdd=rdd, sc=sc)
+            return MethodsManager.get(name)(cmd, df=df, rdd=rdd, sc=sc, report=report)
         else:
             raise NotImplementedError("Method '%s' doesn't found" % name)
 

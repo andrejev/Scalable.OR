@@ -257,7 +257,7 @@ class ScalableOR(object):
                 log.logger.info("Call '%s': cmd='%s'" % (name, cmd))
 
                 try:
-                    df = MethodsManager.call(cmd, df=df, sc=ScalableOR.sc)
+                    df = MethodsManager.call(cmd, df=df, sc=ScalableOR.sc, report=self.report)
                     df and samples.append(df.head(10))
                 except SOROperationException as e:
                     print("Error while performing operation '{}': {}.".format(e.cmd, e.message))

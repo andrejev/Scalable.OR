@@ -52,15 +52,30 @@ def sc_or_import(cmd, sc=None, **kwargs):
 
 
 @MethodsManager.register("scalableor/export")
-def sc_or_export(cmd, df=None, **kwargs):
+def sc_or_export(cmd, df=None, report=None, **kwargs):
     """
     export data to file system
 
     :param cmd:         export parameters
     :param df:          spark data frame
+    :param report:      report object (scalableor.report)
     """
 
-    # TODO Extract row-specific report!
+    # Extract row-specific report!
+    # Get df that only contains lines with problems
+    report_df = df.select(REPORT_COLUMN)
+
+    # Iterate over these lines and add them to the report
+    report_tmp = tempfile.mkdtemp() + ".report.scalable.or"
+    report_df.write.format("com.databricks.spark.csv").save(report_tmp)
+
+    for fpath in sorted(os.listdir(report_tmp)):
+        if fpath.startswith("part-"):
+            with open(os.path.join(report_tmp, fpath), "r") as report_file:
+                for line in report_file:
+                    if line != "":
+                        operation, error, row = line.split("<->")
+                        report.row_error(operation, error, row.split(cmd["separator"]))
 
     # Remove report column
     df = df.drop(REPORT_COLUMN)
@@ -196,13 +211,15 @@ def core_column_split(cmd, df=None, **kwargs):
             func = lambda e: \
                 e[:pos + 1] + \
                 tuple((re.split(cmd["separator"], e[pos], max_column) + add_to)[:max_column + 1]) + \
-                e[pos + 1:-1] + ("{}\nNotification: Cell does not contain delimiter '{}'!".format(e[pos], cmd["separator"])
+                e[pos + 1:-1] + ("{}<->Notification: Cell does not contain delimiter '{}'!<->{}"
+                                 .format("core/column-split", cmd["separator"], ";".join(e))
                                  if cmd["separator"] not in e[pos] else "",)
         else:
             func = lambda e: \
                 e[:pos + 1] + \
                 tuple((e[pos].split(cmd["separator"], max_column) + add_to)[:max_column + 1]) + \
-                e[pos + 1:-1] + ("{}\nNotification: Cell does not contain delimiter '{}'!".format(e[pos], cmd["separator"])
+                e[pos + 1:-1] + ("{}<->Notification: Cell does not contain delimiter '{}'!<->{}"
+                                 .format("core/column-split", cmd["separator"], ";".join(e))
                                  if cmd["separator"] not in e[pos] else "",)
 
     result = df.sql_ctx.createDataFrame(df.rdd.map(func))

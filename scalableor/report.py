@@ -12,11 +12,19 @@ class Report:
         self.op_errors.append((operation, error))
 
     def row_error(self, operation, error, row):
-        self.op_errors.append((operation, error, row))
-        print("Added {}, {}, {} to row_error list.".format(operation, error, ";".join(row)))
+        """ Adds a 'row error' to the current report.
 
-        # Deliberately return an empty list to make it usable in lambda functions
-        return []
+        :param operation: (string) Name of the operation, e.g., 'core/column-split'
+        :param error: (string) Error message
+        :param row: (list) Row where the error occurred, one list element per column
+        :return: None
+        """
+
+        if type(row) is not list:
+            print("Error: parameter 'row' is expected to be a list, {} given.".format(type(row)))
+            return False
+
+        self.row_errors.append((operation, error, row))
 
     def __del__(self):
 
@@ -36,7 +44,7 @@ class Report:
 
             else:
                 output_file.write("During the execution, {} operation-specific and {} row-specific errors occurred.\n\n"
-                                  .format(len(self.row_errors), len(self.op_errors)))
+                                  .format(len(self.op_errors), len(self.row_errors)))
 
                 if len(self.op_errors) > 0:
                     output_file.writelines([
@@ -45,3 +53,12 @@ class Report:
                     ])
 
                     output_file.writelines(["{}, in Operation '{}'.\n".format(msg, op) for op, msg in self.op_errors])
+
+                if len(self.row_errors) > 0:
+                    output_file.writelines([
+                        "\nRow-specific errors:\n",
+                        "--------------------\n"
+                    ])
+
+                    output_file.writelines(["{}, in Operation '{}'.\n{}\n".format(msg, op, ";".join(row))
+                                            for op, msg, row in self.row_errors])
