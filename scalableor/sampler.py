@@ -3,8 +3,7 @@
 # system libs
 import ConfigParser
 import os
-import tempfile
-import shutil
+import numbers
 
 # local imports
 
@@ -16,7 +15,7 @@ cfg.read("config.ini")
 class Sampler:
 
     # Note that the max_size is expressed in Mebibytes, so 1024*1024 Bytes!
-    max_size = int(cfg.get("sampler", "max-size"))
+    max_size = float(cfg.get("sampler", "max-size"))
     sample_suffix = cfg.get("sampler", "sample-suffix")
 
     # The delimiter character is set by sample.py, derived from the --csv-sep argument. Default is ','
@@ -31,6 +30,10 @@ class Sampler:
         # Check if the input file exists
         if not os.path.exists(input_path):
             raise Exception("Input file '{}' does not exist!".format(input_path))
+
+        if not isinstance(self.max_size, numbers.Number):
+            raise Exception("Parameter max_size: Invalid type. Expected a number, got {}."
+                            .format(type(self.max_size)))
 
         # The path to the new sample
         self.sample_path = input_path + self.sample_suffix

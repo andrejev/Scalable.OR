@@ -150,12 +150,6 @@ class TestORRowRemoval(unittest.TestCase):
         return do_test_expected(self, "core-row-removal-list")
 
 
-class TestStartSamplePy(unittest.TestCase):
-    """ Starts the sampler to run the entire sampling process. """
-
-    def test(self):
-        pass
-
 """
 class TestORBigTest(unittest.TestCase):
     def test_base(self):

@@ -59,6 +59,13 @@ class TestCreateAndExtendSample(unittest.TestCase):
             Sampler("912rhgkwetg23t9tgefbasf83523tghewgl")
         self.assertEqual(str(context.exception), "Input file '912rhgkwetg23t9tgefbasf83523tghewgl' does not exist!")
 
+        # Test with wrong data type for max_size
+        with self.assertRaises(Exception) as context:
+            Sampler.max_size = "Hello, World"
+            Sampler(self.input_path)
+        self.assertEqual(str(context.exception),
+                         "Parameter max_size: Invalid type. Expected a number, got <type 'str'>.")
+
     def test_create_below_maximal_size(self):
         """ When the input is below the maximal sample size, the sample should be identical to the original input.
 
