@@ -28,6 +28,10 @@ class Sampler:
         :param input_path: (str) Path of the input file
         """
 
+        # Check if the input file exists
+        if not os.path.exists(input_path):
+            raise Exception("Input file '{}' does not exist!".format(input_path))
+
         # The path to the new sample
         self.sample_path = input_path + self.sample_suffix
 
@@ -109,3 +113,4 @@ class Sampler:
 
             # Move new sample to the place where the previous sample was before
             os.rename(self.sample_path + ".new", self.sample_path)
+

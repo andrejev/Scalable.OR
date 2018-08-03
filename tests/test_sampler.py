@@ -48,6 +48,17 @@ class TestCreateAndExtendSample(unittest.TestCase):
         if os.path.exists(self.sample_path):
             os.remove(self.sample_path)
 
+    def test_exceptions(self):
+        """ Tests some error scenarios and checks if the correct exceptions are thrown.
+
+        :return: None
+        """
+
+        # Test with non-existing input file
+        with self.assertRaises(Exception) as context:
+            Sampler("912rhgkwetg23t9tgefbasf83523tghewgl")
+        self.assertEqual(str(context.exception), "Input file '912rhgkwetg23t9tgefbasf83523tghewgl' does not exist!")
+
     def test_create_below_maximal_size(self):
         """ When the input is below the maximal sample size, the sample should be identical to the original input.
 
