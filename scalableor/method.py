@@ -9,7 +9,7 @@ import tempfile
 
 from pyspark.sql import SQLContext, utils, functions
 
-from scalableor.constant import COLUMN_NAME, REPORT_COLUMN
+from scalableor.constant import *
 from scalableor.context import eval_expression, to_grel_object
 from scalableor.manager import MethodsManager
 
@@ -75,7 +75,11 @@ def sc_or_export(cmd, df=None, report=None, **kwargs):
                 for line in report_file:
                     if line != "":
                         operation, error, row = line.split("<->")
-                        report.row_error(operation, error, row.split(cmd["separator"]))
+
+                        # It may happen that
+
+                        print("Row before split:", row)
+                        report.row_error(operation, error, row.split(REPORT_COLUMN_ROW_SEP))
 
     # Remove report column
     df = df.drop(REPORT_COLUMN)
@@ -211,15 +215,13 @@ def core_column_split(cmd, df=None, **kwargs):
             func = lambda e: \
                 e[:pos + 1] + \
                 tuple((re.split(cmd["separator"], e[pos], max_column) + add_to)[:max_column + 1]) + \
-                e[pos + 1:-1] + ("{}<->Notification: Cell does not contain delimiter '{}'!<->{}"
-                                 .format("core/column-split", cmd["separator"], ";".join(e))
-                                 if cmd["separator"] not in e[pos] else "",)
+                e[pos + 1:-1] + ("",)
         else:
             func = lambda e: \
                 e[:pos + 1] + \
                 tuple((e[pos].split(cmd["separator"], max_column) + add_to)[:max_column + 1]) + \
                 e[pos + 1:-1] + ("{}<->Notification: Cell does not contain delimiter '{}'!<->{}"
-                                 .format("core/column-split", cmd["separator"], ";".join(e))
+                                 .format("core/column-split", cmd["separator"], REPORT_COLUMN_ROW_SEP.join(e))
                                  if cmd["separator"] not in e[pos] else "",)
 
     result = df.sql_ctx.createDataFrame(df.rdd.map(func))
