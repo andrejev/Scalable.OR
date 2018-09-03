@@ -17,6 +17,17 @@ from scalableor.facet import get_facet_filter
 from scalableor.exception import SORGlobalException, SORLocalException, SOROperationException
 
 
+def safe_split(var, sep, maxsplit):
+    return var.split(sep, maxsplit)
+
+
+def sep_missing(sep, var):
+    try:
+        return sep not in var
+    except TypeError:
+        return False
+
+
 @MethodsManager.register("scalableor/import")
 def sc_or_import(cmd, sc=None, **kwargs):
     """
@@ -75,10 +86,6 @@ def sc_or_export(cmd, df=None, report=None, **kwargs):
                 for line in report_file:
                     if line != "":
                         operation, error, row = line.split("<->")
-
-                        # It may happen that
-
-                        print("Row before split:", row)
                         report.row_error(operation, error, row.split(REPORT_COLUMN_ROW_SEP))
 
     # Remove report column
@@ -219,10 +226,10 @@ def core_column_split(cmd, df=None, **kwargs):
         else:
             func = lambda e: \
                 e[:pos + 1] + \
-                tuple((e[pos].split(cmd["separator"], max_column) + add_to)[:max_column + 1]) + \
+                tuple((safe_split(e[pos], cmd["separator"], max_column) + add_to)[:max_column + 1]) + \
                 e[pos + 1:-1] + ("{}<->Notification: Cell does not contain delimiter '{}'!<->{}"
                                  .format("core/column-split", cmd["separator"], REPORT_COLUMN_ROW_SEP.join(e))
-                                 if cmd["separator"] not in e[pos] else "",)
+                                 if sep_missing(cmd["separator"], e[pos]) else "",)
 
     result = df.sql_ctx.createDataFrame(df.rdd.map(func))
 
