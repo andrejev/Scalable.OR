@@ -4,19 +4,22 @@
 import ConfigParser
 import os
 import numbers
+import click
 
 # local imports
+import scalableor.utils as utils
 
+CURRENT_DIR = os.path.abspath(os.path.dirname(__file__))
+PROJECT_DIR = os.path.abspath(os.path.join(CURRENT_DIR, ".."))
 
-cfg = ConfigParser.ConfigParser()
-cfg.read("config.ini")
+# cfg = utils.load_config("config.ini")
 
 
 class Sampler:
 
     # Note that the max_size is expressed in Mebibytes, so 1024*1024 Bytes!
-    max_size = float(cfg.get("sampler", "max-size"))
-    sample_suffix = cfg.get("sampler", "sample-suffix")
+    max_size = 32  # float(cfg.get("sampler", "max-size"))
+    sample_suffix = ".sample"  # cfg.get("sampler", "sample-suffix")
 
     # The delimiter character is set by sample.py, derived from the --csv-sep argument. Default is ','
     delimiter = ","
@@ -75,24 +78,33 @@ class Sampler:
         # Add row
         self.rows_append.append(row)
 
-    def save(self):
+    def save(self, show_progress=False):
         """ Saves the sample into a file.
 
         :return: None
         """
+
+        max_byte = self.max_size * 1024 * 1024
+
+        if show_progress:
+            bar = click.progressbar(length=int(max_byte), label="Creating sample ({} MB)...".format(self.max_size))
 
         # The sample is written into a temp file and later copied
         with open(self.sample_path + ".new", "w+") as new_sample:
 
             # Write header first
             new_sample.write(self.delimiter.join(self.header)+"\n")
+            if show_progress:
+                bar.update(len(self.header)+2)
 
             # Write new rows first
             for row in self.rows_append:
                 new_sample.write(self.delimiter.join(row)+"\n")
+                if show_progress:
+                    bar.update(len(row)+2)
 
                 # Break if the new rows have filled more than half of the maximal size for the sample
-                if new_sample.tell() > (self.max_size / 2) * 1024 * 1024:
+                if new_sample.tell() > (max_byte / 2):
                     break
 
             # Write rows from previous sample
@@ -105,10 +117,12 @@ class Sampler:
                 for line in previous_sample.readlines():
 
                     # If the current write would make the sample exceed the maximal size: stop writing
-                    if new_sample.tell() + len(line) > self.max_size * 1024 * 1024:
+                    if new_sample.tell() + len(line) > max_byte:
                         break
 
                     new_sample.write(line)
+                    if show_progress:
+                        bar.update(len(line)+2)
 
             # Delete sample, if exists
             if os.path.exists(self.sample_path):
