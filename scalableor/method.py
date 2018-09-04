@@ -7,7 +7,9 @@ import os
 import re
 import tempfile
 
+from pyspark import sql
 from pyspark.sql import SQLContext, utils, functions
+from collections import Counter
 
 from scalableor.constant import *
 from scalableor.context import eval_expression, to_grel_object
@@ -37,29 +39,67 @@ def sc_or_import(cmd, sc=None, **kwargs):
     :param sc:          spark context object
     """
 
+    # TODO Check if file exists
+
     # Check separator
     if len(cmd["separator"]) == 0:
         raise SORGlobalException("No CSV separator specified", "scalableor/import")
 
-    # The head should only be set when the user specified it
-    header = True if cmd["col_names_first_row"] else None
+    # # # N E U E   E I N L E S E R O U T I N E # # #
+    # CSV Zeilenweise einlesen -> robustes Einleseverfahren
+    # Jede Zeile ist ein Record
+    rdd = sc.textFile(cmd["path"])
 
-    try:
-        sql_context = SQLContext(sc)
-        df = sql_context.read.csv(cmd["path"], sep=cmd["separator"], header=header)
+    # Auf Kodierungsfehler prüfen: gibt es Zeichen, die nicht in UTF-8 sind?
 
-        # If header from CSV file was not used, name the columns 'Column 1', 'Column 2' etc.
-        if not header:
-            for i in range(len(df.columns)):
-                df = df.withColumnRenamed(df.columns[i], COLUMN_NAME % (i + 1))
+    # Zeilen splitten nach dem Trennzeichen -> passt die Feldanzahl?
+    # Fehlerhafte Zeilen raus und in den Bericht aufnehmen
 
-        # Add column to store report entries
-        df = df.withColumn(REPORT_COLUMN, functions.lit(""))
+    # Get number of cols in the first row (= header row)
+    num_cols = rdd.first().count(cmd["separator"])
 
-        return df
+    # Remove rows that do not have the correct number of columns. Therefore, two RDDs are created. One contains all the
+    # valid rows (correct number of columns), and one contains invalid rows. The valid RDD (rdd) will be used for
+    # further processing. The invalid RDD (invalid_rows) will be added to the report.
 
-    except utils.IllegalArgumentException as e:
-        raise SORGlobalException(e.desc, "scalableor/import")
+    invalid_rows = rdd.filter(lambda x: x.count(cmd["separator"]) != num_cols)
+    rdd = rdd.filter(lambda x: x.count(cmd["separator"]) == num_cols)
+    # Might be a bit inefficient... check
+    # https://stackoverflow.com/questions/29547185/apache-spark-rdd-filter-into-two-rdds for improvement!
+
+    # RDD still consists of a list of text lines. Now, the lines are splitted be the CSV delimiter, to create a RDD out
+    # of a list of lists, whereby each list corresponds to one table row.
+    rdd = rdd.map(lambda x: x.split(cmd["separator"]))
+
+    # Obtain the SQLSession from the SparkContext
+    spark = SQLContext(sc).sparkSession
+
+    # Create DataFrame
+    if cmd["col_names_first_row"]:
+
+        # If the first row contains the column names
+        col_names = rdd.first()
+
+        # Remove first row (column names) from rdd
+        rdd = rdd.filter(lambda x: x != col_names)
+
+    else:
+
+        # If the first row does not conaint column names, just name them "Column 1", "Column 2" etc.
+        col_names = [COLUMN_NAME % (i+1) for i in range(len(rdd.first()))]
+
+    # Create DF (column types will be inferred from the data)
+    df = spark.createDataFrame(rdd, col_names)
+
+    # Add column to store report entries
+    df = df.withColumn(REPORT_COLUMN, functions.lit(""))
+
+    # Typenprüfung (spaltenweise) -> Prüfung auf zufälliger Teilmenge
+    # Beispieltypen implementieren: Datum, IP-Adresse, Kreditkartennummer, ISBN -> default = "string"
+    # Bei abweichenden Typen: Zeile ins Sample aufnehmen
+    # Impmlementieren über rdd.filter()
+
+    return df
 
 
 @MethodsManager.register("scalableor/export")

@@ -9,3 +9,5 @@ out/*
 test.py
 convert.py
 electronics*
+derby.log
+metastore_db

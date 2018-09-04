@@ -7,7 +7,6 @@ import numbers
 import click
 
 # local imports
-import scalableor.utils as utils
 
 CURRENT_DIR = os.path.abspath(os.path.dirname(__file__))
 PROJECT_DIR = os.path.abspath(os.path.join(CURRENT_DIR, ".."))
