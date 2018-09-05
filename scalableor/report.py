@@ -36,12 +36,13 @@ class Report:
 
         #self.sample.append(row)
 
-    def row_error(self, operation, error, row):
+    def row_error(self, operation, error, row, sample_append=True):
         """ Adds a 'row error' to the current report and appends the row to the sample.
 
         :param operation: (string) Name of the operation, e.g., 'core/column-split'
         :param error: (string) Error message
         :param row: (list) Row where the error occurred, one list element per column
+        :param sample_append: (bool) Whether the row should be appended to the sample
         :return: None
         """
 
@@ -51,7 +52,8 @@ class Report:
 
         self.row_errors.append((operation, error, row))
 
-        self.sample.append(row)
+        if sample_append:
+            self.sample.append(row)
 
     def __del__(self):
         """ Saves the sample to a file. This is done in the destructor on purpose, so it does not have to be called
