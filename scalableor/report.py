@@ -1,9 +1,11 @@
+import datetime
+
 from scalableor.sampler import Sampler
 
 
 class Report:
 
-    def __init__(self, output_file, input_path):
+    def __init__(self, output_file, input_path, program_path):
         """ Creates a new, empty report.
 
         :param output_file: (str) The path where the report will be saved to.
@@ -11,6 +13,8 @@ class Report:
         """
 
         self.output_file = output_file
+        self.input_path = input_path
+        self.program_path = program_path
         self.op_errors = []
         self.row_errors = []
 
@@ -68,11 +72,16 @@ class Report:
         # Write the report into a file when the class destructor is called
         with open(self.output_file, "w+") as output_file:
 
+            i, o, p = self.input_path, self.output_file, self.program_path
             # Write header row
             output_file.writelines([
                 "------------------------------------------------------------------------------------\n",
                 "                            Scalable.OR Execution Report                            \n",
-                "------------------------------------------------------------------------------------\n\n"
+                "------------------------------------------------------------------------------------\n",
+                "Input: " + i + "\n",
+                "Output: " + o + "\n",
+                "Program: " + p + "\n",
+                "Date: " + datetime.datetime.now().strftime("%Y-%m-%d %H:%M") + "\n\n"
             ])
 
             # Check if there were any errors

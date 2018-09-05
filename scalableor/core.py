@@ -109,7 +109,7 @@ class ScalableOR(object):
         log.logger.info("output path: %s" % o_path)
         log.logger.info("or-program path: %s" % op_path)
 
-        self.report = Report(r_path, i_path)
+        self.report = Report(r_path, i_path, op_path)
 
         # read or-program
         or_program = json.load(open(op_path, "r"))
