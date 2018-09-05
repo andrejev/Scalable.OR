@@ -11,14 +11,17 @@ import click
 CURRENT_DIR = os.path.abspath(os.path.dirname(__file__))
 PROJECT_DIR = os.path.abspath(os.path.join(CURRENT_DIR, ".."))
 
-# cfg = utils.load_config("config.ini")
+# Parse config file. Please note that the config file that is in the current directory is used, so the tests in /tests
+# (deliberately) use a different config file!
+cfg = ConfigParser.ConfigParser()
+cfg.read("config.ini")
 
 
 class Sampler:
 
     # Note that the max_size is expressed in Mebibytes, so 1024*1024 Bytes!
-    max_size = 32  # float(cfg.get("sampler", "max-size"))
-    sample_suffix = ".sample"  # cfg.get("sampler", "sample-suffix")
+    max_size = float(cfg.get("sampler", "max-size"))
+    sample_infix = cfg.get("sampler", "sample-suffix")
 
     # The delimiter character is set by sample.py, derived from the --csv-sep argument. Default is ','
     delimiter = ","
@@ -37,11 +40,15 @@ class Sampler:
             raise Exception("Parameter max_size: Invalid type. Expected a number, got {}."
                             .format(type(self.max_size)))
 
+        # Extract the file extension from the input file
+        input_ext = input_path.split(".")[-1]
+        input_path = ".".join(input_path.split(".")[:-1])
+
         # The path to the new sample
-        self.sample_path = input_path + self.sample_suffix
+        self.sample_path = input_path + self.sample_infix + "." + input_ext
 
         # Check if a sample already exists
-        if os.path.exists(input_path + self.sample_suffix):
+        if os.path.exists(self.sample_path):
 
             # New sample will be created from the previous sample
             self.previous_sample_path = self.sample_path
@@ -49,7 +56,7 @@ class Sampler:
         else:
 
             # New sample will be created from the input file
-            self.previous_sample_path = input_path
+            self.previous_sample_path = input_path + "." + input_ext
 
         # Get the header of the input/sample
         with open(self.previous_sample_path, "r") as previous_sample_file:

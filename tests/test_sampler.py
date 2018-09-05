@@ -33,7 +33,7 @@ class TestCreateAndExtendSample(unittest.TestCase):
     def setUp(self):
 
         self.input_path = "sampler/input.csv"
-        self.sample_path = "sampler/input.csv" + cfg.get("sampler", "sample-suffix")
+        self.sample_path = "sampler/input" + cfg.get("sampler", "sample-suffix") + ".csv"
 
         # Make sure the sample does not yet exist, to avoid flakiness
         self.assertFalse(os.path.isfile(self.sample_path), "Could not start test because sample from previous test runs"
