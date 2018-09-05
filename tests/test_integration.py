@@ -20,9 +20,13 @@ def do_test_expected(self, case, order_is_relevant=True, argv_append=None, csv_s
     file_in = os.path.join(CASES_DIR, case, "input.csv")
     file_or = os.path.join(CASES_DIR, case, "or.json")
     file_result = os.path.join(CASES_DIR, case, "output.csv")
+    file_sample = file_in + ".sample"
 
     # The report file is only checked if an oracle ("report.txt") exists!
     file_oracle_report = os.path.join(CASES_DIR, case, "report.txt")
+
+    # The sample file is only checked if an oracle ("sample.csv") exists!
+    file_oracle_sample = os.path.join(CASES_DIR, case, "sample.csv")
 
     file_out = NamedTemporaryFile()
     file_report = NamedTemporaryFile()
@@ -39,7 +43,7 @@ def do_test_expected(self, case, order_is_relevant=True, argv_append=None, csv_s
     # If parameter argv_append is set, arguments can be appended
     argv = argv + argv_append if argv_append is not None else argv
 
-    scalableor.run(argv)
+    sor_obj = scalableor.run(argv)
     file_out = open(file_out.name + ".csv", "r")
 
     expected_lines = list(csv.reader(open(file_result, "r"), delimiter=csv_sep))
@@ -64,9 +68,27 @@ def do_test_expected(self, case, order_is_relevant=True, argv_append=None, csv_s
 
         for i, expected_line in enumerate(expected_lines):
             self.assertEqual(expected_line, actual_lines[i])
-            
+
     file_out.close()
     file_report.close()
+
+    # Delete the report object, which triggers saving the report and the sample
+    del sor_obj.report
+
+    # Check sample (only if an oracle is provided, see above)
+    if os.path.isfile(file_oracle_sample):
+        with open(file_sample, "r") as result_sample:
+            actual_lines = [x for x in result_sample.readlines()]
+
+        with open(file_oracle_sample) as oracle_sample:
+            expected_lines = [x for x in oracle_sample.readlines()]
+
+        for i, expected_line in enumerate(expected_lines):
+            self.assertEqual(expected_line, actual_lines[i])
+
+    # Delete sample
+    if os.path.exists(file_sample):
+        os.remove(file_sample)
 
 
 class TestScOR(unittest.TestCase):

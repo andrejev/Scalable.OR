@@ -7,48 +7,117 @@ import os
 import re
 import tempfile
 
+from pyspark import sql
 from pyspark.sql import SQLContext, utils, functions
+from collections import Counter
 
-from scalableor.constant import COLUMN_NAME, REPORT_COLUMN
+from scalableor.constant import *
 from scalableor.context import eval_expression, to_grel_object
 from scalableor.manager import MethodsManager
 
 from scalableor.facet import get_facet_filter
 from scalableor.exception import SORGlobalException, SORLocalException, SOROperationException
+from scalableor.data_types import *
+
+
+def safe_split(var, sep, maxsplit):
+    return var.split(sep, maxsplit)
+
+
+def sep_missing(sep, var):
+    try:
+        return sep not in var
+    except TypeError:
+        return False
 
 
 @MethodsManager.register("scalableor/import")
-def sc_or_import(cmd, sc=None, **kwargs):
+def sc_or_import(cmd, sc=None, report=None, **kwargs):
     """
     import data in spark context and split rows in column
 
     :param cmd:         import parameters
     :param sc:          spark context object
+    :param report:      report object (scalableor.report)
     """
+
+    # Check if file exists
+    if not os.path.exists(cmd["path"]):
+        raise SORGlobalException("The input filed could not be found", "scalableor/import")
 
     # Check separator
     if len(cmd["separator"]) == 0:
         raise SORGlobalException("No CSV separator specified", "scalableor/import")
 
-    # The head should only be set when the user specified it
-    header = True if cmd["col_names_first_row"] else None
+    # Read CSV file as plain text file into an RDD
+    rdd = sc.textFile(cmd["path"])
 
-    try:
-        sql_context = SQLContext(sc)
-        df = sql_context.read.csv(cmd["path"], sep=cmd["separator"], header=header)
+    # TODO Check for encoding errors
+    # TODO The report should also contain the line numbers!
 
-        # If header from CSV file was not used, name the columns 'Column 1', 'Column 2' etc.
-        if not header:
-            for i in range(len(df.columns)):
-                df = df.withColumnRenamed(df.columns[i], COLUMN_NAME % (i + 1))
+    # RDD consists of a list of text lines. Now, the lines are splitted be the CSV delimiter, to create a RDD out
+    # of a list of lists, whereby each list corresponds to one table row.
+    rdd = rdd.map(lambda x: x.split(cmd["separator"]))
 
-        # Add column to store report entries
-        df = df.withColumn(REPORT_COLUMN, functions.lit(""))
+    # Get number of cols in the first row (= header row)
+    num_cols = len(rdd.first())
 
-        return df
+    # Remove rows that do not have the correct number of columns. Therefore, two RDDs are created. One contains all the
+    # valid rows (correct number of columns), and one contains invalid rows. The valid RDD (rdd) will be used for
+    # further processing. The invalid RDD (invalid_rows) will be added to the report.
+    invalid_rows = rdd.filter(lambda x: len(x) != num_cols)
+    rdd = rdd.filter(lambda x: len(x) == num_cols)
 
-    except utils.IllegalArgumentException as e:
-        raise SORGlobalException(e.desc, "scalableor/import")
+    # Might be a bit inefficient... check
+    # https://stackoverflow.com/questions/29547185/apache-spark-rdd-filter-into-two-rdds for improvement!
+
+    # Add invalid rows to the report
+    for row in invalid_rows.collect():
+        report.row_error("scalableor/import", "Row has an invalid number of column and was automatically removed", row,
+                         sample_append=False)
+
+    # Obtain the SQLSession from the SparkContext
+    spark = SQLContext(sc).sparkSession
+
+    # Create DataFrame
+    if cmd["col_names_first_row"]:
+
+        # If the first row contains the column names
+        col_names = rdd.first()
+
+        # Remove first row (column names) from rdd
+        rdd = rdd.filter(lambda x: x != col_names)
+
+    else:
+
+        # If the first row does not conaint column names, just name them "Column 1", "Column 2" etc.
+        col_names = [COLUMN_NAME % (i+1) for i in range(len(rdd.first()))]
+
+    # Create DF (basic column types will be inferred from the data)
+    df = spark.createDataFrame(rdd, col_names)
+
+    # Infer (rich semantic) data types based on a random sample
+    types_rdd = df.rdd.map(lambda x: [DataTypeManager.infer(y) for y in x])
+
+    # Bisher nehmen wir einfach den ersten Eintrag, weil mir nichts besseres eingefallen ist
+    # TODO Each type should be the one that occurs most often
+    types = types_rdd.first()
+
+    # Remove rows from the DataFrame that contain data of invalid types
+    rdd = df.rdd.filter(lambda row: DataTypeManager.check_row(row, types))
+
+    # The removed rows make up the initial sample
+    add_to_sample = df.rdd.filter(lambda row: not DataTypeManager.check_row(row, types))
+    for row in add_to_sample.collect():
+        report.row_error("scalableor/import", "Wrong data type identified. Fields should be of type {}, but are {}"
+                         .format(types, [DataTypeManager.infer(x) for x in row]), [x for x in row])
+
+    df = spark.createDataFrame(rdd, col_names)
+
+    # Add empty column to store report entries
+    df = df.withColumn(REPORT_COLUMN, functions.lit(""))
+
+    return df
 
 
 @MethodsManager.register("scalableor/export")
@@ -75,7 +144,7 @@ def sc_or_export(cmd, df=None, report=None, **kwargs):
                 for line in report_file:
                     if line != "":
                         operation, error, row = line.split("<->")
-                        report.row_error(operation, error, row.split(cmd["separator"]))
+                        report.row_error(operation, error, row.split(REPORT_COLUMN_ROW_SEP))
 
     # Remove report column
     df = df.drop(REPORT_COLUMN)
@@ -211,16 +280,14 @@ def core_column_split(cmd, df=None, **kwargs):
             func = lambda e: \
                 e[:pos + 1] + \
                 tuple((re.split(cmd["separator"], e[pos], max_column) + add_to)[:max_column + 1]) + \
-                e[pos + 1:-1] + ("{}<->Notification: Cell does not contain delimiter '{}'!<->{}"
-                                 .format("core/column-split", cmd["separator"], ";".join(e))
-                                 if cmd["separator"] not in e[pos] else "",)
+                e[pos + 1:-1] + ("",)
         else:
             func = lambda e: \
                 e[:pos + 1] + \
-                tuple((e[pos].split(cmd["separator"], max_column) + add_to)[:max_column + 1]) + \
+                tuple((safe_split(e[pos], cmd["separator"], max_column) + add_to)[:max_column + 1]) + \
                 e[pos + 1:-1] + ("{}<->Notification: Cell does not contain delimiter '{}'!<->{}"
-                                 .format("core/column-split", cmd["separator"], ";".join(e))
-                                 if cmd["separator"] not in e[pos] else "",)
+                                 .format("core/column-split", cmd["separator"], REPORT_COLUMN_ROW_SEP.join(e))
+                                 if sep_missing(cmd["separator"], e[pos]) else "",)
 
     result = df.sql_ctx.createDataFrame(df.rdd.map(func))
 

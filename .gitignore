@@ -6,3 +6,8 @@ report.md
 config.ini
 out/*
 /report.txt
+test.py
+convert.py
+electronics*
+derby.log
+metastore_db

@@ -120,6 +120,13 @@ Scalable.OR includes jar files from this directory on program start.
     - Scala 2.11.6
     - Spark 1.6.1
     - Python 2.7.10
+    
+* Ubuntu 18.04 LTS
+    - OpenJDK 1.8.0_181
+    - Scala 2.11.12
+    - Spark 2.3.1
+    - Hadoop 3.1.1
+    - Python 2.7.15rc1
 
 ## Additional information
 
@@ -142,7 +149,7 @@ coverage report -m --include *scalableor*
 
 ### Spark installation
 
-* Install Java
+* Install Java (note that Spark currently only work with Java 8, and not with Java 9 or 10)
 
 ```
 #!bash
