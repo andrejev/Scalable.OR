@@ -17,6 +17,7 @@ from scalableor.manager import MethodsManager
 
 from scalableor.facet import get_facet_filter
 from scalableor.exception import SORGlobalException, SORLocalException, SOROperationException
+from scalableor.data_types import *
 
 
 def safe_split(var, sep, maxsplit):
@@ -45,15 +46,10 @@ def sc_or_import(cmd, sc=None, **kwargs):
     if len(cmd["separator"]) == 0:
         raise SORGlobalException("No CSV separator specified", "scalableor/import")
 
-    # # # N E U E   E I N L E S E R O U T I N E # # #
-    # CSV Zeilenweise einlesen -> robustes Einleseverfahren
-    # Jede Zeile ist ein Record
+    # Read CSV file as plain text file into an RDD
     rdd = sc.textFile(cmd["path"])
 
-    # Auf Kodierungsfehler prüfen: gibt es Zeichen, die nicht in UTF-8 sind?
-
-    # Zeilen splitten nach dem Trennzeichen -> passt die Feldanzahl?
-    # Fehlerhafte Zeilen raus und in den Bericht aufnehmen
+    # TODO Check for encoding errors
 
     # Get number of cols in the first row (= header row)
     num_cols = rdd.first().count(cmd["separator"])
@@ -61,9 +57,9 @@ def sc_or_import(cmd, sc=None, **kwargs):
     # Remove rows that do not have the correct number of columns. Therefore, two RDDs are created. One contains all the
     # valid rows (correct number of columns), and one contains invalid rows. The valid RDD (rdd) will be used for
     # further processing. The invalid RDD (invalid_rows) will be added to the report.
-
     invalid_rows = rdd.filter(lambda x: x.count(cmd["separator"]) != num_cols)
     rdd = rdd.filter(lambda x: x.count(cmd["separator"]) == num_cols)
+
     # Might be a bit inefficient... check
     # https://stackoverflow.com/questions/29547185/apache-spark-rdd-filter-into-two-rdds for improvement!
 
@@ -88,10 +84,10 @@ def sc_or_import(cmd, sc=None, **kwargs):
         # If the first row does not conaint column names, just name them "Column 1", "Column 2" etc.
         col_names = [COLUMN_NAME % (i+1) for i in range(len(rdd.first()))]
 
-    # Create DF (column types will be inferred from the data)
+    # Create DF (basic column types will be inferred from the data)
     df = spark.createDataFrame(rdd, col_names)
 
-    # Add column to store report entries
+    # Add empty column to store report entries
     df = df.withColumn(REPORT_COLUMN, functions.lit(""))
 
     # Typenprüfung (spaltenweise) -> Prüfung auf zufälliger Teilmenge
@@ -99,7 +95,19 @@ def sc_or_import(cmd, sc=None, **kwargs):
     # Bei abweichenden Typen: Zeile ins Sample aufnehmen
     # Impmlementieren über rdd.filter()
 
-    return df
+    # TODO Test broken CSV table (= contains rows with invalid number of fields) in base_import
+
+    # Infer (rich semantic) data types based on a random sample
+    types_rdd = df.rdd.map(lambda x: [DataTypeManager.infer(y) for y in x])
+
+    # Bisher nehmen wir einfach den ersten Eintrag, weil mir nichts besseres eingefallen ist
+    # TODO Each type should be the one that occurs most often
+    types = types_rdd.first()
+
+    # Remove rows from the DataFrame that contain data of invalid types
+    rdd = df.rdd.filter(lambda row: DataTypeManager.check_row(row, types))
+
+    return spark.createDataFrame(rdd, col_names)
 
 
 @MethodsManager.register("scalableor/export")
