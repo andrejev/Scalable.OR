@@ -20,7 +20,7 @@ def do_test_expected(self, case, order_is_relevant=True, argv_append=None, csv_s
     file_in = os.path.join(CASES_DIR, case, "input.csv")
     file_or = os.path.join(CASES_DIR, case, "or.json")
     file_result = os.path.join(CASES_DIR, case, "output.csv")
-    file_sample = file_in + ".sample"
+    file_sample = file_in[:-4] + ".sample.csv"
 
     # The report file is only checked if an oracle ("report.txt") exists!
     file_oracle_report = os.path.join(CASES_DIR, case, "report.txt")
