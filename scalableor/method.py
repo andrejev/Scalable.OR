@@ -31,6 +31,21 @@ def sep_missing(sep, var):
         return False
 
 
+def fillna(row, num_cols, fill_string):
+    """ Fills possible missing columns in row with fill_string.
+
+    :param row: (list) Row that perhaps lacks columns (=elements)
+    :param num_cols: (int) Number of columns each row is supposed to have
+    :param fill_string: (str) String that is used to fill the missing fields
+    :return: (list) New row with additional columns. If row already had the required number of columns, it is returned
+    as it is.
+    """
+    if len(row) == num_cols:
+        return row
+    elif len(row) < num_cols:
+        return row + [fill_string for _ in range(num_cols - len(row))]
+
+
 @MethodsManager.register("scalableor/import")
 def sc_or_import(cmd, sc=None, report=None, **kwargs):
     """
@@ -49,7 +64,23 @@ def sc_or_import(cmd, sc=None, report=None, **kwargs):
     if len(cmd["separator"]) == 0:
         raise SORGlobalException("No CSV separator specified", "scalableor/import")
 
-    # Read CSV file as plain text file into an RDD
+    # Ask user what to do with broken lines
+    while True:
+        broken_lines = raw_input("What should Scalable.OR do in case of broken lines? "
+                             "(R)emove line and append to report or (F)ill missing fields: ").lower()
+
+        if broken_lines == "r" or broken_lines == "f":
+            break
+        else:
+            print("Invalid option. Please choose either 'R' or 'F'!")
+
+    # Perhaps check fill string
+    if broken_lines == "f":
+        fill_string = raw_input("Please enter any string to fill the missing fields. Leave empty for empty fields: ")
+    else:
+        fill_string = ""
+
+        # Read CSV file as plain text file into an RDD
     rdd = sc.textFile(cmd["path"])
 
     # TODO Check for encoding errors
@@ -62,19 +93,24 @@ def sc_or_import(cmd, sc=None, report=None, **kwargs):
     # Get number of cols in the first row (= header row)
     num_cols = len(rdd.first())
 
-    # Remove rows that do not have the correct number of columns. Therefore, two RDDs are created. One contains all the
-    # valid rows (correct number of columns), and one contains invalid rows. The valid RDD (rdd) will be used for
-    # further processing. The invalid RDD (invalid_rows) will be added to the report.
-    invalid_rows = rdd.filter(lambda x: len(x) != num_cols)
-    rdd = rdd.filter(lambda x: len(x) == num_cols)
+    if broken_lines == "r":
+        # Remove rows that do not have the correct number of columns. Therefore, two RDDs are created. One contains all
+        # valid rows (correct number of columns), and one contains invalid rows. The valid RDD (rdd) will be used for
+        # further processing. The invalid RDD (invalid_rows) will be added to the report.
+        invalid_rows = rdd.filter(lambda x: len(x) != num_cols)
+        rdd = rdd.filter(lambda x: len(x) == num_cols)
 
-    # Might be a bit inefficient... check
-    # https://stackoverflow.com/questions/29547185/apache-spark-rdd-filter-into-two-rdds for improvement!
+        # Might be a bit inefficient... check
+        # https://stackoverflow.com/questions/29547185/apache-spark-rdd-filter-into-two-rdds for improvement!
 
-    # Add invalid rows to the report
-    for row in invalid_rows.collect():
-        report.row_error("scalableor/import", "Row has an invalid number of column and was automatically removed", row,
-                         sample_append=False)
+        # Add invalid rows to the report
+        for row in invalid_rows.collect():
+            report.row_error("scalableor/import", "Row has an invalid number of column and was automatically removed",
+                             row, sample_append=False)
+
+    elif broken_lines == "f":
+        # Fills broken lines, meaning that missing fields are substituted by a user-specified string
+        rdd = rdd.map(lambda row: fillna(row, num_cols, fill_string))
 
     # Obtain the SQLSession from the SparkContext
     spark = SQLContext(sc).sparkSession
