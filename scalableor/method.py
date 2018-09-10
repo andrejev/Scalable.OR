@@ -31,19 +31,22 @@ def sep_missing(sep, var):
         return False
 
 
-def fillna(row, num_cols, fill_string):
+def fillna(row_index, num_cols, fill_string):
     """ Fills possible missing columns in row with fill_string.
 
-    :param row: (list) Row that perhaps lacks columns (=elements)
+    :param row_index: (tuple) Tuple containing (1) row that perhaps lacks columns (=elements) and (2) its index
     :param num_cols: (int) Number of columns each row is supposed to have
     :param fill_string: (str) String that is used to fill the missing fields
     :return: (list) New row with additional columns. If row already had the required number of columns, it is returned
     as it is.
     """
+
+    row, index = row_index
+
     if len(row) == num_cols:
-        return row
+        return row, index
     elif len(row) < num_cols:
-        return row + [fill_string for _ in range(num_cols - len(row))]
+        return row + [fill_string for _ in range(num_cols - len(row))], index
 
 
 @MethodsManager.register("scalableor/import")
@@ -64,15 +67,19 @@ def sc_or_import(cmd, sc=None, report=None, **kwargs):
     if len(cmd["separator"]) == 0:
         raise SORGlobalException("No CSV separator specified", "scalableor/import")
 
-    # Ask user what to do with broken lines
-    while True:
-        broken_lines = raw_input("What should Scalable.OR do in case of broken lines? "
-                             "(R)emove line and append to report or (F)ill missing fields: ").lower()
+    # Get default value for broken_lines
+    broken_lines = "r"  # TODO Obtain from command line parameter!
 
-        if broken_lines == "r" or broken_lines == "f":
-            break
-        else:
-            print("Invalid option. Please choose either 'R' or 'F'!")
+    # Ask user what to do with broken lines
+    if broken_lines is None:
+        while True:
+            broken_lines = raw_input("What should Scalable.OR do in case of broken lines? "
+                                     "(R)emove line and append to report or (F)ill missing fields: ").lower()
+
+            if broken_lines == "r" or broken_lines == "f":
+                break
+            else:
+                print("Invalid option. Please choose either 'R' or 'F'!")
 
     # Perhaps check fill string
     if broken_lines == "f":
@@ -81,36 +88,36 @@ def sc_or_import(cmd, sc=None, report=None, **kwargs):
         fill_string = ""
 
         # Read CSV file as plain text file into an RDD
-    rdd = sc.textFile(cmd["path"])
+    rdd = sc.textFile(cmd["path"]).zipWithIndex()
 
     # TODO Check for encoding errors
     # TODO The report should also contain the line numbers!
 
     # RDD consists of a list of text lines. Now, the lines are splitted be the CSV delimiter, to create a RDD out
     # of a list of lists, whereby each list corresponds to one table row.
-    rdd = rdd.map(lambda x: x.split(cmd["separator"]))
+    rdd = rdd.map(lambda x: (x[0].split(cmd["separator"]), x[1]))
 
     # Get number of cols in the first row (= header row)
-    num_cols = len(rdd.first())
+    num_cols = len(rdd.first()[0])
 
     if broken_lines == "r":
         # Remove rows that do not have the correct number of columns. Therefore, two RDDs are created. One contains all
         # valid rows (correct number of columns), and one contains invalid rows. The valid RDD (rdd) will be used for
         # further processing. The invalid RDD (invalid_rows) will be added to the report.
-        invalid_rows = rdd.filter(lambda x: len(x) != num_cols)
-        rdd = rdd.filter(lambda x: len(x) == num_cols)
+        invalid_rows = rdd.filter(lambda x: len(x[0]) != num_cols)
+        rdd = rdd.filter(lambda x: len(x[0]) == num_cols)
 
         # Might be a bit inefficient... check
         # https://stackoverflow.com/questions/29547185/apache-spark-rdd-filter-into-two-rdds for improvement!
 
         # Add invalid rows to the report
-        for row in invalid_rows.collect():
-            report.row_error("scalableor/import", "Row has an invalid number of column and was automatically removed",
-                             row, sample_append=False)
+        for row, index in invalid_rows.collect():
+            report.row_error("scalableor/import", "Row has an invalid number of columns and was automatically "
+                                                  "removed", row, line=index+1, sample_append=False)
 
     elif broken_lines == "f":
         # Fills broken lines, meaning that missing fields are substituted by a user-specified string
-        rdd = rdd.map(lambda row: fillna(row, num_cols, fill_string))
+        rdd = rdd.map(lambda x: fillna(x, num_cols, fill_string))
 
     # Obtain the SQLSession from the SparkContext
     spark = SQLContext(sc).sparkSession
@@ -119,34 +126,34 @@ def sc_or_import(cmd, sc=None, report=None, **kwargs):
     if cmd["col_names_first_row"]:
 
         # If the first row contains the column names
-        col_names = rdd.first()
+        col_names = rdd.first()[0]
 
         # Remove first row (column names) from rdd
-        rdd = rdd.filter(lambda x: x != col_names)
+        rdd = rdd.filter(lambda x: x[0] != col_names)
 
     else:
 
         # If the first row does not conaint column names, just name them "Column 1", "Column 2" etc.
-        col_names = [COLUMN_NAME % (i+1) for i in range(len(rdd.first()))]
+        col_names = [COLUMN_NAME % (i+1) for i in range(len(rdd.first()[0]))]
 
-    # Create DF (basic column types will be inferred from the data)
-    df = spark.createDataFrame(rdd, col_names)
-
-    # Infer (rich semantic) data types based on a random sample
-    types_rdd = df.rdd.map(lambda x: [DataTypeManager.infer(y) for y in x])
+    # Infer (rich semantic) data types based on a random sample (=> CURRENTLY, SAMPLE IS NOT USED!)
+    types_rdd = rdd.map(lambda x: [DataTypeManager.infer(y) for y in x[0]])  # use rdd.sample().map... for production!
 
     # Bisher nehmen wir einfach den ersten Eintrag, weil mir nichts besseres eingefallen ist
     # TODO Each type should be the one that occurs most often
     types = types_rdd.first()
 
-    # Remove rows from the DataFrame that contain data of invalid types
-    rdd = df.rdd.filter(lambda row: DataTypeManager.check_row(row, types))
+    # Remove rows from the DataFrame that contain data of invalid types. Before, save them for the sample
+    rows_wrong_data_types = rdd.filter(lambda row: not DataTypeManager.check_row(row[0], types))
+    rdd = rdd.filter(lambda row: DataTypeManager.check_row(row[0], types))
 
     # The removed rows make up the initial sample
-    add_to_sample = df.rdd.filter(lambda row: not DataTypeManager.check_row(row, types))
-    for row in add_to_sample.collect():
+    for row, index in rows_wrong_data_types.collect():
         report.row_error("scalableor/import", "Wrong data type identified. Fields should be of type {}, but are {}"
-                         .format(types, [DataTypeManager.infer(x) for x in row]), [x for x in row])
+                         .format(types, [DataTypeManager.infer(x) for x in row]), [x for x in row], line=index+1)
+
+    # Remove line numbers from the RDD
+    rdd = rdd.map(lambda x: x[0])
 
     df = spark.createDataFrame(rdd, col_names)
 

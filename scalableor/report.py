@@ -40,12 +40,13 @@ class Report:
 
         #self.sample.append(row)
 
-    def row_error(self, operation, error, row, sample_append=True):
+    def row_error(self, operation, error, row, line=None, sample_append=True):
         """ Adds a 'row error' to the current report and appends the row to the sample.
 
         :param operation: (string) Name of the operation, e.g., 'core/column-split'
         :param error: (string) Error message
         :param row: (list) Row where the error occurred, one list element per column
+        :param line: (int) Line number in the original input file
         :param sample_append: (bool) Whether the row should be appended to the sample
         :return: None
         """
@@ -54,7 +55,7 @@ class Report:
             print("Error: parameter 'row' is expected to be a list, {} given.".format(type(row)))
             return False
 
-        self.row_errors.append((operation, error, row))
+        self.row_errors.append((operation, error, row, line))
 
         if sample_append:
             self.sample.append(row)
@@ -106,5 +107,5 @@ class Report:
                         "--------------------\n"
                     ])
 
-                    output_file.writelines(["{}, in Operation '{}'.\n{}\n".format(msg, op, ";".join(row))
-                                            for op, msg, row in self.row_errors])
+                    output_file.writelines(["{}, in Operation '{}'.\n{} (line {})\n".format(msg, op, ";".join(row), l)
+                                            for op, msg, row, l in self.row_errors])
