@@ -117,7 +117,7 @@ class ScalableOR(object):
         # import file
         if args.add_import_command:
             or_program.insert(0, {"op": "scalableor/import", "separator": args.csv_sep, "path": i_path,
-                                  "col_names_first_row": args.col_names_first_row})
+                                  "col_names_first_row": args.col_names_first_row, "review_types": args.review_types})
 
         # export file
         if args.add_export_command:
@@ -205,6 +205,9 @@ class ScalableOR(object):
         parser.add_argument("--col-names-first-row", default=cfg.getboolean("cmd", "col-names-first-row"),
                             action="store_true", help="make Scalable.OR use the first row as column names when"
                                                       "importing CSV files (default: %(default)s)")
+
+        parser.add_argument("--review-types", action="store_true", default=cfg.getboolean("cmd", "review-types"),
+                            help="if the user should review the data type guesses (default: %(default)s) ", )
 
         args = parser.parse_args(args=argv)
 

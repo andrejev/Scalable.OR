@@ -111,6 +111,15 @@ class DataTypeManager(object):
 
         return True
 
+    @staticmethod
+    def get_registered_types():
+        """ Returns all registered types.
+
+        :return: (list) All registered types.
+        """
+
+        return DataTypeManager.fn.keys() + [DataTypeManager.default_type]
+
 
 class VerifiersManager(object):
     fn = {}

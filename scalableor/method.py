@@ -67,7 +67,7 @@ def sc_or_import(cmd, sc=None, report=None, **kwargs):
     if len(cmd["separator"]) == 0:
         raise SORGlobalException("No CSV separator specified", "scalableor/import")
 
-    # Get default value for broken_lines
+    # Get default values for broken_lines
     broken_lines = "r"  # TODO Obtain from command line parameter!
 
     # Ask user what to do with broken lines
@@ -87,11 +87,10 @@ def sc_or_import(cmd, sc=None, report=None, **kwargs):
     else:
         fill_string = ""
 
-        # Read CSV file as plain text file into an RDD
+    # Read CSV file as plain text file into an RDD
     rdd = sc.textFile(cmd["path"]).zipWithIndex()
 
     # TODO Check for encoding errors
-    # TODO The report should also contain the line numbers!
 
     # RDD consists of a list of text lines. Now, the lines are splitted be the CSV delimiter, to create a RDD out
     # of a list of lists, whereby each list corresponds to one table row.
@@ -142,6 +141,29 @@ def sc_or_import(cmd, sc=None, report=None, **kwargs):
     # Bisher nehmen wir einfach den ersten Eintrag, weil mir nichts besseres eingefallen ist
     # TODO Each type should be the one that occurs most often
     types = types_rdd.first()
+
+    # For each type: ask the user if it is the correct one
+    if cmd["review_types"]:
+        for i, type in enumerate(types):
+            answer = raw_input("{} has been detected as type '{}'. Is this correct? [y/n] ".format(col_names[i], type))
+
+            # If user chose "no": do type correction
+            if answer.lower() == "n":
+
+                available_types = ", ".join(["'" + x + "'" for x in DataTypeManager.get_registered_types()])
+
+                while True:
+                    new_type = raw_input("Sorry for that. What is the correct type? You can choose among {}. ".
+                                         format(available_types))
+
+                    # Check if a valid type was chosen
+                    if new_type in DataTypeManager.get_registered_types():
+                        types[i] = new_type
+                        break
+
+                    else:
+                        print("Your choice '{}' is not a correct data type. You can choose among {}".
+                              format(new_type, available_types))
 
     # Remove rows from the DataFrame that contain data of invalid types. Before, save them for the sample
     rows_wrong_data_types = rdd.filter(lambda row: not DataTypeManager.check_row(row[0], types))
