@@ -95,6 +95,7 @@ class ScalableOR(object):
         o_path = os.path.abspath(args.output)
         op_path = os.path.abspath(args.or_program)
         r_path = os.path.abspath(args.report)
+        c_path = os.path.abspath(args.config) if args.config is not None else None
 
         for p in [i_path, op_path, os.path.dirname(o_path)]:
             if not os.path.exists(p):
@@ -117,7 +118,8 @@ class ScalableOR(object):
         # import file
         if args.add_import_command:
             or_program.insert(0, {"op": "scalableor/import", "separator": args.csv_sep, "path": i_path,
-                                  "col_names_first_row": args.col_names_first_row, "review_types": args.review_types})
+                                  "col_names_first_row": args.col_names_first_row, "review_types": args.review_types,
+                                  "input_cfg": c_path})
 
         # export file
         if args.add_export_command:
@@ -208,6 +210,9 @@ class ScalableOR(object):
 
         parser.add_argument("--review-types", action="store_true", default=cfg.getboolean("cmd", "review-types"),
                             help="if the user should review the data type guesses (default: %(default)s) ", )
+
+        parser.add_argument("-c", "--config", default=None,
+                            help="set path to input configuration file (default: %(default)s)", type=str)
 
         args = parser.parse_args(args=argv)
 

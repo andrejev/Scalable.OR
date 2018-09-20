@@ -1,22 +1,18 @@
 # -*- coding: utf-8 -*-
 
-import cStringIO
-import csv
 import os
-
 import re
 import tempfile
+import ConfigParser
 
-from pyspark import sql
-from pyspark.sql import SQLContext, utils, functions
-from collections import Counter
+from pyspark.sql import SQLContext, functions
 
 from scalableor.constant import *
 from scalableor.context import eval_expression, to_grel_object
 from scalableor.manager import MethodsManager
 
 from scalableor.facet import get_facet_filter
-from scalableor.exception import SORGlobalException, SORLocalException, SOROperationException
+from scalableor.exception import SORGlobalException, SOROperationException
 from scalableor.data_types import *
 
 
@@ -59,19 +55,35 @@ def sc_or_import(cmd, sc=None, report=None, **kwargs):
     :param report:      report object (scalableor.report)
     """
 
+    cfg = ConfigParser.ConfigParser()
+
     # Check if file exists
     if not os.path.exists(cmd["path"]):
-        raise SORGlobalException("The input filed could not be found", "scalableor/import")
+        raise SORGlobalException("The input file could not be found", "scalableor/import")
 
     # Check separator
     if len(cmd["separator"]) == 0:
         raise SORGlobalException("No CSV separator specified", "scalableor/import")
 
-    # Get default values for broken_lines
-    broken_lines = "r"  # TODO Obtain from command line parameter!
+    # If specified, read config file
+    if cmd["input_cfg"] is not None:
 
-    # Ask user what to do with broken lines
-    if broken_lines is None:
+        # Make sure the file exists!
+        if not os.path.exists(cmd["input_cfg"]):
+            raise SORGlobalException("The input configuration file could not be found", "scalableor/import")
+
+        # Load the file
+        with open(cmd["input_cfg"], "r") as input_cfg:
+            cfg.readfp(input_cfg)
+
+    if cmd["input_cfg"] is not None:
+
+        # Get default values for broken_lines from input config, if exists
+        broken_lines = cfg.get("general", "broken_lines").lower()
+        print("Got broken lines setting from config file: {}".format(broken_lines))
+
+    else:
+        # Ask user what to do with broken lines if no config exists
         while True:
             broken_lines = raw_input("What should Scalable.OR do in case of broken lines? "
                                      "(R)emove line and append to report or (F)ill missing fields: ").lower()
@@ -89,8 +101,6 @@ def sc_or_import(cmd, sc=None, report=None, **kwargs):
 
     # Read CSV file as plain text file into an RDD
     rdd = sc.textFile(cmd["path"]).zipWithIndex()
-
-    # TODO Check for encoding errors
 
     # RDD consists of a list of text lines. Now, the lines are splitted be the CSV delimiter, to create a RDD out
     # of a list of lists, whereby each list corresponds to one table row.
@@ -135,16 +145,25 @@ def sc_or_import(cmd, sc=None, report=None, **kwargs):
         # If the first row does not conaint column names, just name them "Column 1", "Column 2" etc.
         col_names = [COLUMN_NAME % (i+1) for i in range(len(rdd.first()[0]))]
 
-    # Infer (rich semantic) data types based on a random sample (=> CURRENTLY, SAMPLE IS NOT USED!)
+    # Infer (rich semantic) data types based on a random sample
     types_rdd = rdd.map(lambda x: [DataTypeManager.infer(y) for y in x[0]])  # use rdd.sample().map... for production!
-
-    # Bisher nehmen wir einfach den ersten Eintrag, weil mir nichts besseres eingefallen ist
-    # TODO Each type should be the one that occurs most often
     types = types_rdd.first()
 
     # For each type: ask the user if it is the correct one
-    if cmd["review_types"]:
+    if cmd["review_types"] or cmd["input_cfg"] is not None:
         for i, type in enumerate(types):
+
+            # Check if there is an config entry for the respective column
+            if cfg.has_option("types", col_names[i]):
+                new_type = cfg.get("types", col_names[i])
+
+                # Check if a valid type has been used
+                if new_type in DataTypeManager.get_registered_types():
+                    types[i] = new_type
+                    print("Got data type of column {} from config: {}".format(col_names[i], new_type))
+                    continue
+
+            # If it could not be successfully read from the config (--> no continue), ask the user about the type
             answer = raw_input("{} has been detected as type '{}'. Is this correct? [y/n] ".format(col_names[i], type))
 
             # If user chose "no": do type correction
