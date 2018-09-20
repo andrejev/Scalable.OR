@@ -95,7 +95,12 @@ def sc_or_import(cmd, sc=None, report=None, **kwargs):
 
     # Perhaps check fill string
     if broken_lines == "f":
-        fill_string = raw_input("Please enter any string to fill the missing fields. Leave empty for empty fields: ")
+
+        # Search fill string in config file
+        if cfg.has_option("general", "fill_string"):
+            fill_string = cfg.get("general", "fill_string")
+        else:
+            fill_string = raw_input("Please enter any string to fill the missing fields. Leave empty for empty fields: ")
     else:
         fill_string = ""
 
@@ -184,14 +189,49 @@ def sc_or_import(cmd, sc=None, report=None, **kwargs):
                         print("Your choice '{}' is not a correct data type. You can choose among {}".
                               format(new_type, available_types))
 
-    # Remove rows from the DataFrame that contain data of invalid types. Before, save them for the sample
-    rows_wrong_data_types = rdd.filter(lambda row: not DataTypeManager.check_row(row[0], types))
-    rdd = rdd.filter(lambda row: DataTypeManager.check_row(row[0], types))
+    # Per default, data type mismatches are ignored
+    actions = [DataTypeManager.action_ignore for _ in types]
 
-    # The removed rows make up the initial sample
-    for row, index in rows_wrong_data_types.collect():
-        report.row_error("scalableor/import", "Wrong data type identified. Fields should be of type {}, but are {}"
-                         .format(types, [DataTypeManager.infer(x) for x in row]), [x for x in row], line=index+1)
+    if cmd["review_types"] or cmd["input_cfg"] is not None:
+
+        for i, action in enumerate(actions):
+
+            # Skip columns that have the default type
+            if types[i] == DataTypeManager.default_type:
+                continue
+
+            # Check if there is a config entry for the respective column
+            if cfg.has_option("actions", col_names[i]):
+
+                # Set the action
+                actions[i] = cfg.get("actions", col_names[i])
+
+            else:
+
+                # If not: ask the user to enter the required action
+                actions[i] = raw_input("Column '{}' is of type {}. What should be done with mismatched data? Type {} "
+                                       "for remove, {} for ignore or any other string to replace mismatching values "
+                                       "by it: ".format(col_names[i], types[i], DataTypeManager.action_remove,
+                                                        DataTypeManager.action_ignore))
+
+    # Only do the checks if at least one remove action has been specified
+    if DataTypeManager.action_remove in actions:
+
+        # Remove rows from the DataFrame that contain data of invalid types. Before, save them for the sample
+        rows_wrong_data_types = rdd.filter(lambda row: not DataTypeManager.check_row(row[0], types, actions))
+        rdd = rdd.filter(lambda row: DataTypeManager.check_row(row[0], types, actions))
+
+        # The removed rows make up the initial sample
+        for row, index in rows_wrong_data_types.collect():
+            report.row_error("scalableor/import", "Wrong data type identified. Fields should be of type {}, but are {}"
+                             .format(types, [DataTypeManager.infer(x) for x in row]), [x for x in row], line=index+1)
+
+    # Only do the replacements if at least one replace action has been specified. Creates a list of all actions that are
+    # neither 'ignore' nor 'remove' and counts them. If they are more than 0, jump into that block.
+    if len([x for x in actions if x != DataTypeManager.action_ignore and x != DataTypeManager.action_remove]) > 0:
+
+        # Perform the replacements using map
+        rdd = rdd.map(lambda row: DataTypeManager.replace_field(row[0], row[1], types, actions))
 
     # Remove line numbers from the RDD
     rdd = rdd.map(lambda x: x[0])

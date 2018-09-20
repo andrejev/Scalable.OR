@@ -45,6 +45,10 @@ class DataTypeManager(object):
     # The type that will be returned if no other type has been identified
     default_type = "string"
 
+    # Identifiers for the actions 'remove' and 'ignore'
+    action_remove = "%rem%"
+    action_ignore = "%ign%"
+
     @staticmethod
     def register(identifier):
         """ Registers any function as check method for a type known under the given identifier.
@@ -97,19 +101,52 @@ class DataTypeManager(object):
         return DataTypeManager.fn[identifier](field)
 
     @staticmethod
-    def check_row(row, types):
+    def check_row(row, types, actions):
         """ Checks for a whole row of fields if the types apply to the fields.
 
         :param row: (list) The fields of the input data. Must be same size as types.
         :param types: (list) The corresponding types. Must be same size as row.
+        :param actions: (list) The corresponding actions (remove, ignore or <s> for replacing by <s>). Must be same size
+                        as row.
         :return: (bool) True if every field has the correct type, False if at least one field has an incorrect type.
         """
 
-        for field, type in zip(row, types):
-            if not DataTypeManager.check_type(field, type):
-                return False
+        # Iterate over every field in the row
+        for field, type, action in zip(row, types, actions):
+
+            # Only check if a remove action is specified
+            if action == DataTypeManager.action_remove:
+
+                # If the data type does not fit: remove row by returning False
+                if not DataTypeManager.check_type(field, type):
+                    return False
 
         return True
+
+    @staticmethod
+    def replace_field(row, line_number, types, actions):
+        """ Checks for a whole row if the types apply, and if not, the value is replaced as specified
+
+        :param row: (list) The fields of the input data. Must be same size as types.
+        :param line_number: (int) Number of the current line in the original input file.
+        :param types: (list) The corresponding types. Must be same size as row.
+        :param actions: (list) The corresponding actions (remove, ignore or <s> for replacing by <s>). Must be same size
+                        as row.
+        :return: (list) The row, with fields replaced
+        """
+
+        for field, i, type, action in zip(row, range(len(row)), types, actions):
+
+            # If the action 'replace' is specified (meaning, it is not %rem%, %ign% and not empty)
+            if action not in [DataTypeManager.action_ignore, action != DataTypeManager.action_remove, ""]:
+
+                # Check if the data type matches
+                if not DataTypeManager.check_type(field, type):
+
+                    # If it does not match: replace the value
+                    row[i] = action
+
+        return row, line_number
 
     @staticmethod
     def get_registered_types():

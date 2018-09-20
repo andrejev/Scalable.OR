@@ -21,6 +21,11 @@ def do_test_expected(self, case, order_is_relevant=True, argv_append=None, csv_s
     file_or = os.path.join(CASES_DIR, case, "or.json")
     file_result = os.path.join(CASES_DIR, case, "output.csv")
     file_sample = file_in[:-4] + ".sample.csv"
+    file_config = os.path.join(CASES_DIR, "input_config.ini")
+
+    # If a specific input config file exists, use this one instead
+    if os.path.exists(os.path.join(CASES_DIR, case, "input_config.ini")):
+        file_config = os.path.join(CASES_DIR, case, "input_config.ini")
 
     # The report file is only checked if an oracle ("report.txt") exists!
     file_oracle_report = os.path.join(CASES_DIR, case, "report.txt")
@@ -37,7 +42,8 @@ def do_test_expected(self, case, order_is_relevant=True, argv_append=None, csv_s
         "-p", file_or,
         "-o", file_out.name + ".csv",
         "-l",
-        "-r", file_report.name + ".txt"
+        "-r", file_report.name + ".txt",
+        "-c", file_config
     ]
 
     # If parameter argv_append is set, arguments can be appended
@@ -97,6 +103,9 @@ class TestScOR(unittest.TestCase):
 
     def test_import_export_separator(self):
         return do_test_expected(self, "base-import-export-separator", argv_append=["--csv-sep", ";"], csv_sep=";")
+
+    def test_data_types(self):
+        return do_test_expected(self, "base-data-types", argv_append=["--col-names-first-row"])
 
 
 class TestORColumnSplit(unittest.TestCase):

@@ -1,4 +1,6 @@
 test,test1,test2-test
 test,test4,test5-test
+test,test4,NaN
 test,test1,test2-test
 test,test4,test5-test
+test,NaN,NaN
