@@ -77,9 +77,9 @@ class Sampler:
             raise Exception("Wrong input type. {} expected, {} was given.".format(list, type(row)))
 
         # Check size
-        if len(row) != len(self.header):
+        """if len(row) != len(self.header):
             raise Exception("Too many columns in the record. {} expected, {} were given."
-                            .format(len(self.header), len(row)))
+                            .format(len(self.header), len(row)))"""
 
         # Add row
         self.rows_append.append(row)
