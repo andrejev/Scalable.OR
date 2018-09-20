@@ -134,11 +134,11 @@ def aircraft_reg_us(field):
         return False
 
     # The first character must be an "N"
-    if field[0].lower() != "N":
+    if field[0].lower() != "n":
         return False
 
     # The second character must be a digit other than zero
-    if not field[1].isdigint():
+    if not field[1].isdigit():
         return False
 
     if int(field[1]) == 0:
